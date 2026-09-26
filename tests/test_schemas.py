@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from ai_incident_investigator.investigations.sсhemas import InvestigationRequest
+from ai_incident_investigator.investigations.schemas import InvestigationRequest
 
 
 @pytest.fixture
