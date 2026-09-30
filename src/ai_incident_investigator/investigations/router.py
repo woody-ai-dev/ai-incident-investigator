@@ -1,7 +1,6 @@
-from fastapi.params import Depends
 from typing import Annotated
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
 from ai_incident_investigator.investigations.reports import InvestigationReport
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
