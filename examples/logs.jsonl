@@ -1,0 +1,4 @@
+{"timestamp":"2026-09-19T10:01:00Z","service":"order-service","environment":"local","level":"INFO","message":"Order request received."}
+{"timestamp":"2026-09-19T10:03:00Z","service":"order-service","environment":"local","level":"ERROR","message":"Payment request timed out."}
+{"timestamp":"2026-09-19T10:04:00Z","service":"payment-service","environment":"local","level":"WARN","message":"Payment processing is slow."}
+{"timestamp":"2026-09-19T10:10:00Z","service":"order-service","environment":"local","level":"INFO","message":"Request outside the selected time window."}

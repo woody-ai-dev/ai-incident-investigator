@@ -1,17 +1,21 @@
+from pathlib import Path
+
 from ai_incident_investigator.investigations.reports import InvestigationReport, RecommendedCheck
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
+from ai_incident_investigator.sources.logs import collect_logs
 
 
-def investigate(request: InvestigationRequest) -> InvestigationReport:
-    """Return an inconclusive report until telemetry sources are connected."""
+def investigate(request: InvestigationRequest, *, log_path: Path) -> InvestigationReport:
+    logs = collect_logs(log_path, request)
+
     return InvestigationReport(
         summary=(
-            f"Cannot determine the cause of the incident for service '{request.service}' "
+            f"Collected {len(logs.evidence)} log record(s) for service '{request.service}' "
             f"in environment '{request.environment}' between "
-            f"{request.start_time.isoformat()} and {request.end_time.isoformat()}: "
-            "telemetry sources are not connected."
+            f"{request.start_time.isoformat()} and {request.end_time.isoformat()} "
+            "(end excluded). The incident cause has not been determined."
         ),
-        evidence=[],
+        evidence=logs.evidence,
         findings=[],
         hypotheses=[],
         recommended_checks=[
@@ -21,7 +25,7 @@ def investigate(request: InvestigationRequest) -> InvestigationReport:
             ),
         ],
         missing_data=[
-            "Service logs are unavailable: the log source is not connected.",
+            *logs.issues,
             "Prometheus metrics are unavailable: the metrics source is not connected.",
             "Distributed traces are unavailable: the trace source is not connected.",
             "Actuator context is unavailable: the Actuator source is not connected.",
