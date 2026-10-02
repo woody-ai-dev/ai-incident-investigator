@@ -1,0 +1,7 @@
+# Java build output
+**/target/
+*.class
+
+# Local runtime logs
+**/logs/
+/data/

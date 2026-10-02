@@ -1,0 +1,39 @@
+server:
+  address: 127.0.0.1
+  port: 8081
+
+spring:
+  application:
+    name: order-service
+
+demo:
+  environment: ${DEMO_ENVIRONMENT:local}
+  payment-mode: ${DEMO_PAYMENT_MODE:normal}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  file:
+    name: ${DEMO_LOG_FILE:logs/order-service.jsonl}
+
+  structured:
+    format:
+      file: logstash
+
+    json:
+      rename:
+        "[@timestamp]": timestamp
+
+      add:
+        service: ${spring.application.name}
+        environment: ${demo.environment}
+
+  logback:
+    rollingpolicy:
+      max-file-size: 5MB
+      max-history: 2
+      total-size-cap: 20MB

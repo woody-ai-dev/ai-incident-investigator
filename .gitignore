@@ -28,3 +28,6 @@ dist/
 # Local editor and OS files
 .idea/
 .DS_Store
+
+# Local telemetry
+/data/

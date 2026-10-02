@@ -36,4 +36,37 @@ jobs:
         run: uv run --locked mypy
 
       - name: Run tests
-        run: uv run --locked pytest
+        run: uv run --locked pytest 
+  java-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: demo-services/order-service/pom.xml
+
+      - name: Build and test Java service
+        working-directory: demo-services/order-service
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+
+      - name: Install Python
+        run: uv python install
+
+      - name: Install Python dependencies
+        run: uv sync --locked --dev
+
+      - name: Validate Java logs with Python
+        run: >
+          uv run --locked python scripts/check_demo_logs.py
+          demo-services/order-service/target/test-logs/timeout.jsonl
