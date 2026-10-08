@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -73,6 +73,8 @@ class RecommendedCheck(ReportModel):
 
 
 class InvestigationReport(ReportModel):
+    analysis_status: Literal["not_requested", "skipped", "completed", "failed"] = "not_requested"
+
     summary: ReportText
     evidence: list[Evidence]
     findings: list[Finding]

@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.141.1",
+    "openai>=3.24.0,<4",
     "pydantic>=2.13.5",
     "uvicorn[standard]>=0.53.0",
 ]
@@ -21,6 +22,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "httpx2>=2.13.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
