@@ -19,7 +19,6 @@ def check_logs(path: Path) -> None:
                 raise ValueError("Unexpected service or environment")
 
             count += 1
-
             if entry.level == "ERROR" and "Payment request timed out (simulated)" in entry.message:
                 timeout_found = True
 
