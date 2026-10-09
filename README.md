@@ -3,135 +3,221 @@
 An incident investigation assistant in development, intended to help on-call
 engineers and SREs turn service telemetry into evidence-backed incident reports.
 
-The current version collects evidence from local JSONL logs and optionally uses
-OpenAI to produce structured incident analysis. A Java demo service generates a
-reproducible payment-timeout scenario. Reports distinguish evidence-backed
-observations from hypotheses; automated remediation is not implemented.
+The current version collects evidence from JSONL logs and optionally uses OpenAI
+for structured analysis. A Java demo service generates a reproducible
+payment-timeout scenario. Automated remediation is not implemented.
 
-## What works today
+## Current capabilities
 
 - FastAPI endpoints for health checks and investigation requests.
 - Validated service, environment, and timezone-aware investigation windows.
 - JSONL collection filtered by service, environment, and time.
-- Evidence with references to physical lines in the configured log file.
-- Explicit reporting of unavailable data, malformed records, and collection limits.
-- A Spring Boot order service with normal and simulated payment-timeout modes.
-- Optional OpenAI analysis with structured output and evidence-reference validation.
-- Evidence-preserving fallback when model requests fail or analysis is rejected.
-- Python tests, Java API tests, and a Java-to-Python log contract check.
+- Evidence with references to physical lines in the source file.
+- Explicit reporting of unavailable data and collection limits.
+- Optional structured LLM analysis with evidence-reference validation.
+- Evidence-preserving fallback when analysis fails or is rejected.
+- A Spring Boot demo service with normal and payment-timeout modes.
+- Docker images and a Docker Compose demo.
+- Python tests, Java API tests, and an end-to-end demo check.
 
-With LLM analysis disabled, an investigation returns collected evidence and data
-gaps, with empty `findings` and `hypotheses`. When enabled, the model can add
-observations, hypotheses, and recommended checks. A valid report does not prove
-that its explanation is correct.
+With analysis disabled, reports contain evidence and data gaps, with empty
+findings and hypotheses. A structurally valid model report does not prove that
+its explanation is correct.
 
 ## Architecture
 
 ```text
-HTTP order request
+Order request
     -> Java order-service
-    -> JSONL log file
+    -> JSONL file in the shared log volume
     -> Python log collector
-    -> evidence + data gaps
-    -> optional OpenAIAnalyzer / OpenAI Responses API
+    -> evidence and data gaps
+    -> optional OpenAI analysis
     -> output and evidence-reference validation
     -> InvestigationReport
 ```
 
-The applications run as separate processes. They share a telemetry contract,
-not implementation code. The Java demo uses a `PaymentGateway` interface backed
-by a simulation; there is no external payment service or database yet.
+The services run as separate processes and share a telemetry contract.
+The demo payment gateway is a simulation; there is no external payment provider
+or order database.
 
-```text
-.github/workflows/ci.yaml          CI checks
-src/ai_incident_investigator/      Python API, report models, and log collector
-src/ai_incident_investigator/llm/  OpenAI adapter, prompt, and dependencies
-.env.example                     Configuration template without secrets
-tests/                            Python tests
-scripts/check_demo_logs.py        Java log contract check
-examples/logs.jsonl                Synthetic example logs
-demo-services/order-service/      Standalone Java/Maven application
-data/                             Local runtime data, excluded from Git
+## Quick start with Docker Compose
+
+Requirements:
+
+- Docker Engine with Docker Compose, or Docker Desktop.
+- A running Docker daemon.
+- Network access for the first image build and dependency downloads.
+- Ports 8000 and 8081 available on the host.
+
+Run commands from the repository root:
+
+```bash
+docker compose config --quiet
+docker compose up --build --wait --wait-timeout 180
 ```
 
-## Requirements
+The first command validates the configuration. The second builds the images,
+starts the services, and waits for their health checks.
 
-- `uv` and Python 3.12, installed through `uv`.
-- JDK 25 for the Java application.
-- Network access for the initial dependency downloads.
-- For optional live analysis: an OpenAI API key, access to the configured model,
-  and available API credits or billing. API usage is billed separately from
-  a ChatGPT subscription; collecting logs and running mocked tests need no key.
+| Service | Address |
+| --- | --- |
+| Investigator health | http://127.0.0.1:8000/health |
+| Investigator API documentation | http://127.0.0.1:8000/docs |
+| Order-service health | http://127.0.0.1:8081/actuator/health |
+| Order creation | POST http://127.0.0.1:8081/api/v1/orders |
 
-Maven 3.9.16 is provided through the committed Maven Wrapper. A separate Maven
-installation is not required. The shell examples below use a POSIX shell.
+The Compose demo explicitly disables LLM analysis and requires no API key.
 
-Run commands from the repository root unless stated otherwise.
+## Check the complete demo
 
-## Setup
+Install the host-side Python environment:
 
 ```bash
 uv python install
 uv sync --locked --dev
 ```
 
-Select JDK 25 in the terminal used for the Java build. On macOS:
+Run the check against the running Compose services:
+
+```bash
+uv run --locked python scripts/check_compose_demo.py
+```
+
+The script:
+
+1. Checks both health endpoints.
+2. Creates an order and expects HTTP 504 with PAYMENT_TIMEOUT.
+3. Uses the returned order ID and a recent UTC time window to investigate.
+4. Validates the response against InvestigationReport.
+5. Requires timeout evidence for that exact order.
+6. Requires analysis_status to be not_requested.
+
+An example successful result:
+
+```text
+Compose demo passed: order=<UUID>; evidence=<count>; analysis_status=not_requested.
+```
+
+Record counts vary with framework logging and the selected time window.
+
+## Reproduce the timeout manually
+
+```bash
+curl -i http://127.0.0.1:8081/api/v1/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"productId":"book-1","quantity":2}'
+```
+
+The response should be HTTP 504 with code PAYMENT_TIMEOUT and an orderId.
+Health remains UP because the application itself is running.
+
+The simulation throws a controlled exception immediately. It does not reproduce
+an actual network delay or explain why a real dependency would be slow.
+
+## Container design
+
+- Python dependencies are installed from uv.lock without development packages.
+- The Python application is installed in non-editable mode.
+- Java is built with Maven Wrapper and JDK 25, then runs in a JRE image.
+- Both applications run as a non-root user with UID 10001.
+- Java writes logs to the named demo-logs volume.
+- Python mounts the same volume read-only.
+- Root filesystems are read-only; /tmp is a temporary filesystem.
+- Host ports are bound to 127.0.0.1.
+- The investigator starts after the Java health check succeeds.
+- LLM_ENABLED is explicitly false in Compose.
+- OPENAI_API_KEY is not passed to the containers.
+- Docker build contexts include only the files required for each image.
+
+Inside containers, both HTTP servers listen on 0.0.0.0.
+This allows Docker's published ports to reach them.
+
+The Compose configuration uses /data/order-service.jsonl for both the Java log
+destination and the Python log source.
+
+## Stop the demo
+
+Inspect services and logs:
+
+```bash
+docker compose ps
+docker compose logs --tail=100
+```
+
+Stop the services while retaining captured logs:
+
+```bash
+docker compose down
+```
+
+For a fresh capture, remove the demo volume:
+
+```bash
+docker compose down --volumes
+```
+
+The last command deletes the saved logs from the Compose volume.
+
+## Repository structure
+
+```text
+Dockerfile                         Python image
+.dockerignore                      Python build context exclusions
+compose.yaml                       Local container demo
+.github/workflows/ci.yaml           CI checks
+src/ai_incident_investigator/       API, models, collection, and analysis
+tests/                             Python tests
+scripts/check_compose_demo.py      Container demo check
+scripts/check_demo_logs.py         Java-to-Python log contract check
+examples/logs.jsonl                 Synthetic example logs
+demo-services/order-service/       Java application and its Docker image
+.env.example                       Configuration template without secrets
+data/                              Local runtime data, excluded from Git
+```
+
+## Local development
+
+For development without containers, install uv and JDK 25.
+Maven 3.9.16 is provided through the committed Maven Wrapper.
+
+```bash
+uv python install
+uv sync --locked --dev
+```
+
+On macOS, select JDK 25 for the terminal:
 
 ```bash
 export JAVA_HOME=$(/usr/libexec/java_home -v 25)
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-On other systems, set `JAVA_HOME` to the installed JDK 25 directory.
-Verify the JDK Maven actually uses:
+Confirm the JDK used by Maven:
 
 ```bash
 ./demo-services/order-service/mvnw -version
 ```
 
-The output must show Java 25. The `java.version` property in `pom.xml` does not
-select the JDK that runs Maven. Repeat the environment setup in a new terminal.
-
-## Build and test
-
-Build the Java application and run its six API tests:
+Build and test the Java service:
 
 ```bash
 ./demo-services/order-service/mvnw \
   -f demo-services/order-service/pom.xml -B -ntp clean verify
 ```
 
-Validate the generated timeout logs against the Python model:
+Validate its generated timeout logs:
 
 ```bash
 uv run --locked python scripts/check_demo_logs.py \
   demo-services/order-service/target/test-logs/timeout.jsonl
 ```
 
-The check must report valid records and a simulated timeout. The record count
-can vary with framework logging.
+Stop Compose before starting local services on the same ports.
 
-Run Python checks:
+## Capture a local incident
 
-```bash
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-uv run --locked mypy
-uv run --locked pytest
-```
-
-The GitHub Actions workflow runs Python checks, the Java build, and the log
-contract check on pull requests and pushes to `main`.
-
-The Python suite disables live LLM analysis by default. Adapter tests use the real
-SDK with mocked HTTP responses, and API tests inject a stub analyzer. They do not
-send paid model requests, and CI needs no OpenAI API key.
-
-## Reproduce an incident
-
-### 1. Start the Java service
-
-After building the JAR, run this in terminal A:
+Start the Java service in terminal A:
 
 ```bash
 mkdir -p data
@@ -141,31 +227,16 @@ DEMO_LOG_FILE="$PWD/data/order-service-timeout.jsonl" \
 java -jar demo-services/order-service/target/order-service-0.1.0.jar
 ```
 
-In terminal B, check readiness and submit an order:
+Create an order in terminal B:
 
 ```bash
-curl -i http://127.0.0.1:8081/actuator/health
-
 curl -i http://127.0.0.1:8081/api/v1/orders \
   -H 'Content-Type: application/json' \
   -d '{"productId":"book-1","quantity":2}'
 ```
 
-Health returns `200` with `status: UP`. The order request returns `504` with
-`code: PAYMENT_TIMEOUT` and an `orderId`. The file contains an `ERROR` event
-with `Payment request timed out (simulated)` in its message.
-
-This mode throws a controlled exception immediately. It does not reproduce an
-actual network delay. Health remains UP because the application itself is running.
-
-For the success scenario, restart with `DEMO_PAYMENT_MODE=normal` and a different
-log filename. A valid order returns `201` with `status: ACCEPTED`. Missing or
-invalid quantities return `400`. Orders are not persisted.
-
-### 2. Start the investigator
-
-Stop the Java service with `Ctrl+C` after reproducing the error. Use the completed
-file as a snapshot for the current collector. In terminal A, run:
+Stop Java with Ctrl+C after capturing the error. Start the investigator in
+terminal A:
 
 ```bash
 LLM_ENABLED=false \
@@ -173,14 +244,7 @@ INVESTIGATOR_LOG_PATH="$PWD/data/order-service-timeout.jsonl" \
 uv run --locked uvicorn ai_incident_investigator.main:app --reload
 ```
 
-- API documentation: http://127.0.0.1:8000/docs
-- Health: http://127.0.0.1:8000/health
-- Investigation endpoint: `POST /investigations`
-
-### 3. Investigate the captured time window
-
-In terminal B, generate a request using timestamps from the actual file. This
-avoids accidentally investigating an interval after the incident:
+Generate a request from the captured timestamps in terminal B:
 
 ```bash
 uv run --locked python - <<'PY'
@@ -191,6 +255,7 @@ from pathlib import Path
 path = Path("data/order-service-timeout.jsonl")
 records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 timestamps = [datetime.fromisoformat(record["timestamp"]) for record in records]
+
 request = {
     "service": "order-service",
     "environment": "local",
@@ -198,7 +263,11 @@ request = {
     "end_time": (max(timestamps) + timedelta(seconds=1)).isoformat(),
     "description": "Order creation returns HTTP 504.",
 }
-Path("data/investigation-request.json").write_text(json.dumps(request, indent=2))
+
+Path("data/investigation-request.json").write_text(
+    json.dumps(request, indent=2),
+    encoding="utf-8",
+)
 PY
 
 curl -i http://127.0.0.1:8000/investigations \
@@ -206,26 +275,16 @@ curl -i http://127.0.0.1:8000/investigations \
   --data-binary @data/investigation-request.json
 ```
 
-The report should contain log evidence, including the simulated timeout, with
-references such as `local-jsonl:line:14`. Other telemetry sources remain listed
-in `missing_data`.
+For the success scenario, restart Java with DEMO_PAYMENT_MODE=normal and a fresh
+log filename. A valid order returns HTTP 201 with status ACCEPTED.
+Orders are not persisted.
 
-An HTTP `200` means a report was produced, not that a root cause was established.
-A missing file can also produce a report with a data-gap explanation.
+## Optional LLM analysis
 
-Log files append across repeated runs. The example above covers all timestamps
-in the selected file; use a fresh filename for an isolated capture.
+Live analysis is optional. The Compose demo and CI do not use it.
 
-## Optional OpenAI analysis
-
-To analyze the captured incident with a real model, create a local configuration
-file. If `.env` already exists, update it instead of overwriting it:
-
-```bash
-cp .env.example .env
-```
-
-Set these values in `.env`, replacing the key placeholder with your own API key:
+For local live analysis, create a private .env file using .env.example as a
+template. Update an existing .env instead of overwriting it.
 
 ```dotenv
 INVESTIGATOR_LOG_PATH=data/order-service-timeout.jsonl
@@ -234,95 +293,81 @@ OPENAI_API_KEY=your-api-key
 OPENAI_MODEL=gpt-4.1-mini-2025-04-14
 ```
 
-`.env` is excluded from Git. Keep real credentials out of `.env.example`.
-The example file defaults to `LLM_ENABLED=false` and contains no API key.
+Replace the key placeholder with your own API key.
+Keep real credentials out of .env.example and Git.
 
-Stop the investigator and restart it from the repository root:
+Restart the local investigator with:
 
 ```bash
 uv run --env-file .env --locked uvicorn ai_incident_investigator.main:app --reload
 ```
 
-Repeat the `POST /investigations` request from the previous section. The time
-window must contain matching log records; without evidence, analysis is skipped.
-The model receives the investigation request, selected evidence, and data gaps.
-It does not receive repository files or chat history.
+Python settings read process environment variables. They do not automatically
+load .env; the command above loads it through uv.
 
-The report includes `analysis_status`:
+When analysis is enabled, a missing or blank key prevents application startup.
+Requests send the investigation request, selected evidence, and data gaps to the
+configured model.
 
-| Status | Meaning |
+| analysis_status | Meaning |
 | --- | --- |
-| `not_requested` | LLM analysis is disabled. |
-| `skipped` | Analysis is enabled, but no matching evidence was collected. |
-| `completed` | Analysis passed output and evidence-reference validation. |
-| `failed` | Analysis failed or was rejected; the baseline report retains evidence and data gaps. |
+| not_requested | LLM analysis is disabled. |
+| skipped | Analysis is enabled, but there is no matching evidence. |
+| completed | Analysis passed output and evidence-reference validation. |
+| failed | Analysis failed or was rejected; evidence has been retained. |
 
-Findings and hypotheses must reference existing evidence IDs. This validation
-checks references and structure, not whether the model's reasoning is correct.
-Use the reproducible timeout and normal-request scenarios to review that separately.
-A timeout is a symptom; it does not establish why a dependency was slow.
+Findings and hypotheses must reference existing evidence IDs.
+This checks report structure and references, not the correctness of the reasoning.
 
-## Configuration
+## Checks and CI
 
-| Variable | Application | Default | Purpose |
-| --- | --- | --- | --- |
-| `INVESTIGATOR_LOG_PATH` | Python | `data/logs.jsonl` | JSONL file to investigate |
-| `LLM_ENABLED` | Python | `false` | Enable optional model analysis |
-| `OPENAI_API_KEY` | Python | unset | Required when analysis is enabled |
-| `OPENAI_MODEL` | Python | `gpt-4.1-mini-2025-04-14` | Model used for analysis |
-| `DEMO_PAYMENT_MODE` | Java | `normal` | `normal` or `payment-timeout` |
-| `DEMO_ENVIRONMENT` | Java | `local` | Environment label in logs |
-| `DEMO_LOG_FILE` | Java | `logs/order-service.jsonl` | Output log file |
+Run Python checks:
 
-Relative paths are resolved against the process working directory. The Python
-settings code reads process environment variables; it does not automatically load
-an `.env` file. Use `uv run --env-file .env ...` to load it explicitly.
-When analysis is enabled, a missing or blank API key prevents application startup.
+```bash
+uv run --locked ruff format --check .
+uv run --locked ruff check .
+uv run --locked mypy
+uv run --locked pytest
+```
 
-Investigation windows include the start and exclude the end:
-`start_time <= timestamp < end_time`. Timestamps require a timezone and are
-normalized to UTC. For example, `19:40Z` and `22:40+03:00` describe the same time.
+GitHub Actions runs three jobs on pull requests and pushes to main:
+
+- Python formatting, linting, type checks, and tests.
+- Java tests and the Java-to-Python log contract check.
+- Docker image builds and the Compose incident check.
+
+Python tests disable live analysis. Adapter tests use mocked HTTP responses.
+CI requires no OpenAI API key.
+
+The Docker job removes its temporary containers and log volume after the check.
 
 ## Current limits
 
-- One local JSONL source, read in file order.
+- One local JSONL source.
 - At most 100 evidence records, 5 MiB scanned, and 64 KiB per line by default.
-- Malformed records are skipped and reported; byte limits can stop collection.
-- A line reference is meaningful only for the captured file; rotated archives
-  and changing files are not handled as a persistent evidence store.
-- Prometheus metrics, distributed traces, and Actuator context collection are
-  not connected. The Java Actuator health endpoint is available independently.
-- Model input JSON is limited to 32,000 UTF-8 bytes; oversized input produces a
-  fallback report rather than silently truncating evidence. This is a byte limit,
-  not a token limit, and excludes the system prompt and output schema.
-- Output is capped at 2,500 tokens. The SDK uses a 20-second timeout and at most
-  one retry; this is not a 20-second total deadline for an investigation.
-- Requests set `store=False` to disable response storage for later API retrieval.
-  This does not imply zero data retention by the provider.
-- A single model call performs analysis; no autonomous tool loop or semantic
-  correctness guarantee is implemented.
-- No persistent investigation history, React UI, or automatic fixes.
+- Malformed records and collection limits are reported as data gaps.
+- Rotated log archives are not collected automatically.
+- Line references apply to the source file used for that investigation.
+- Prometheus, distributed traces, and Actuator context collection are not connected.
+- LLM input JSON is limited to 32,000 UTF-8 bytes, excluding instructions and schema.
+- Model output is capped at 2,500 tokens.
+- The SDK uses a 20-second timeout and at most one retry.
+- Requests use store=False; this does not imply zero provider data retention.
+- No persistent investigation history, React UI, or automatic remediation.
 
 ## Troubleshooting
 
-- **`OPENAI_API_KEY is required`:** provide the key and load `.env` with
-  `uv run --env-file .env ...`, or set `LLM_ENABLED=false`.
-- **`analysis_status: skipped`:** check that the log file and requested window
-  contain matching evidence.
-- **`analysis_status: failed`:** check the server warning, API access and billing,
-  model availability, and the input-size limit. Evidence remains in the report.
-- **`EndPosTable` during Java compilation:** check `mvnw -version` and select JDK 25.
-  This project has been verified on JDK 25.
-- **No matching log records:** check the configured file, service, environment,
-  and time window. A window starting after the incident excludes its records.
-- **`mvnw: No such file or directory` in CI:** commit `mvnw`, `mvnw.cmd`, and
-  `.mvn/wrapper/maven-wrapper.properties`. Keep `mvnw` executable.
-- **Maven Central network errors:** restore network/proxy access, then retry with
-  `-U`. A download failure is separate from a compilation error.
+- Docker daemon unavailable: start Docker Desktop or Docker Engine.
+- Port already allocated: stop an existing local service using port 8000 or 8081.
+- Container unhealthy: inspect docker compose ps and docker compose logs.
+- No matching evidence: check the source file, service, environment, and time window.
+- Expected HTTP 504 but received 201: ensure the payment-timeout demo is running.
+- Analysis failed: check API access, input limits, and model availability.
+- OPENAI_API_KEY is required: load the local .env or disable analysis.
+- Java compilation errors: confirm Maven is running with JDK 25.
 
 ## Next milestone
 
-Package the Python and Java services into reproducible Docker images and a
-Docker Compose demo. Then add Prometheus evidence and a task-specific evaluation
-set covering timeout, successful-request, missing-data, and model-failure cases.
-Actuator context and the React interface follow as the MVP grows.
+Add Prometheus evidence, then Actuator context and a task-specific evaluation set.
+Build the React interface as the MVP grows. Complete live-model validation before
+release.
