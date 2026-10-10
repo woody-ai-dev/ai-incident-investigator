@@ -105,8 +105,16 @@ jobs:
       - name: Build and start demo
         run: docker compose up --build --wait --wait-timeout 180
 
+      - name: Validate Prometheus configuration
+        run: >-
+          docker compose exec -T prometheus
+          /bin/promtool check config /etc/prometheus/prometheus.yml
+
       - name: Check incident investigation
         run: uv run --locked python scripts/check_compose_demo.py
+
+      - name: Check Prometheus metrics
+        run: uv run --locked python scripts/check_prometheus_demo.py
 
       - name: Show container logs
         if: always()
