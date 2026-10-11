@@ -2,16 +2,39 @@ import os
 from pathlib import Path
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     log_path: Path = Path("data/logs.jsonl")
+    prometheus_url: HttpUrl | None = None
     llm_enabled: bool = False
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     openai_model: str = Field(default="gpt-4.1-mini-2025-04-14", min_length=1)
+
+    @field_validator("prometheus_url")
+    @classmethod
+    def validate_prometheus_url(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is not None and (
+            len(str(value)) > 512
+            or value.username is not None
+            or value.password is not None
+            or value.query is not None
+            or value.fragment is not None
+        ):
+            raise ValueError("PROMETHEUS_URL must be a base URL without credentials or query data")
+
+        return value
 
     @model_validator(mode="after")
     def validate_api_key(self) -> Self:
@@ -29,6 +52,7 @@ def get_settings() -> Settings:
     return Settings.model_validate(
         {
             "log_path": os.environ.get("INVESTIGATOR_LOG_PATH", "data/logs.jsonl"),
+            "prometheus_url": os.environ.get("PROMETHEUS_URL") or None,
             "llm_enabled": os.environ.get("LLM_ENABLED", "false"),
             "openai_api_key": SecretStr(raw_key) if raw_key else None,
             "openai_model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14"),
