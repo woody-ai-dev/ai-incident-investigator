@@ -115,6 +115,9 @@ jobs:
 
       - name: Check Prometheus metrics
         run: uv run --locked python scripts/check_prometheus_demo.py
+      
+      - name: Check investigation metric evidence
+        run: uv run --locked python scripts/check_investigation_metrics.py  
 
       - name: Show container logs
         if: always()

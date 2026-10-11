@@ -3,25 +3,26 @@
 An incident investigation assistant in development, intended to help on-call
 engineers and SREs turn service telemetry into evidence-backed incident reports.
 
-The current version collects evidence from JSONL logs and optionally uses OpenAI
-for structured analysis. A Java demo service generates a reproducible
-payment-timeout scenario, and Prometheus collects its HTTP and JVM metrics.
-Investigation reports currently use logs only; Prometheus evidence collection
-is the next integration step. Automated remediation is not implemented.
+The current version collects evidence from JSONL logs and Prometheus and
+optionally uses OpenAI for structured analysis. A Java demo service generates
+a reproducible payment-timeout scenario. Reports combine log records with
+historical scrape availability, JVM heap usage, and cumulative HTTP 504 counter
+observations. Automated remediation is not implemented.
 
 ## Current capabilities
 
 - FastAPI endpoints for health checks and investigation requests.
 - Validated service, environment, and timezone-aware investigation windows.
 - JSONL collection filtered by service, environment, and time.
-- Evidence with references to physical lines in the source file.
-- Explicit reporting of unavailable data and collection limits.
+- Log evidence with references to physical lines in the source file.
+- Historical Prometheus evidence filtered by service, environment, and time.
+- Metric summaries with query references, sample counts, minimum, maximum, and last values.
+- Partial collection with explicit reporting of unavailable data and limits.
 - Optional structured LLM analysis with evidence-reference validation.
 - Evidence-preserving fallback when analysis fails or is rejected.
 - A Spring Boot demo service with normal and payment-timeout modes.
 - Docker images and a three-service Docker Compose demo.
-- Prometheus scraping with service and environment labels.
-- Python tests, Java API tests, and end-to-end checks for logs and metrics.
+- Python tests, Java API tests, and checks for telemetry collection and report integration.
 
 With analysis disabled, reports contain evidence and data gaps, with empty
 findings and hypotheses. A structurally valid model report does not prove that
@@ -30,28 +31,26 @@ its explanation is correct.
 ## Architecture
 
 ```text
-Order request
-    -> Java order-service
-    -> JSONL file in the shared log volume
-    -> Python log collector
-    -> evidence and data gaps
+Java order-service
+    -> JSONL file in the demo-logs volume
+    -> /actuator/prometheus -> Prometheus -> prometheus-data volume
+
+POST /investigations
+    -> request validation
+    -> Python JSONL log collector and Prometheus metrics collector
+    -> combined evidence and data gaps
     -> optional OpenAI analysis
     -> output and evidence-reference validation
     -> InvestigationReport
 ```
 
-A separate metrics path runs alongside the investigation path:
+The investigator reads the shared log file and queries the Prometheus HTTP API
+when an investigation is requested. Prometheus scrapes the Java service every
+five seconds independently of investigation requests.
 
-```text
-Java order-service
-    -> /actuator/prometheus
-    -> Prometheus scrapes every 5 seconds
-    -> time series in the prometheus-data volume
-    -> Prometheus API and metrics demo check
-```
-
-The investigator does not yet query the Prometheus API. The metrics demo check
-validates collection separately from the log-based investigation report.
+The metrics collector uses three fixed queries. HTTP clients cannot supply
+arbitrary PromQL or select a Prometheus server in the investigation payload.
+The server address comes from application configuration.
 
 The services run as separate processes and share a telemetry contract.
 The demo payment gateway is a simulation; there is no external payment provider
@@ -78,14 +77,16 @@ starts the services, and waits for their health checks.
 
 | Service | Address |
 | --- | --- |
-| Investigator health | http://127.0.0.1:8000/health |
-| Investigator API documentation | http://127.0.0.1:8000/docs |
-| Order-service health | http://127.0.0.1:8081/actuator/health |
-| Order creation | POST http://127.0.0.1:8081/api/v1/orders |
-| Java metrics exporter | http://127.0.0.1:8081/actuator/prometheus |
-| Prometheus interface | http://127.0.0.1:9090 |
+| Investigator health | [GET /health](http://127.0.0.1:8000/health) |
+| Investigator API documentation | [Swagger UI](http://127.0.0.1:8000/docs) |
+| Order-service health | [GET /actuator/health](http://127.0.0.1:8081/actuator/health) |
+| Order creation | `POST http://127.0.0.1:8081/api/v1/orders` |
+| Java metrics exporter | [GET /actuator/prometheus](http://127.0.0.1:8081/actuator/prometheus) |
+| Prometheus interface | [Prometheus UI](http://127.0.0.1:9090) |
 
-The Compose demo explicitly disables LLM analysis and requires no API key.
+The Compose demo enables metric collection with
+`PROMETHEUS_URL=http://prometheus:9090`, explicitly disables LLM analysis, and
+requires no API key.
 The host does not need a JDK to run the container demo; the Java image includes
 the required build and runtime environments. Host-side check scripts require uv.
 
@@ -119,7 +120,9 @@ An example successful result:
 Compose demo passed: order=<UUID>; evidence=<count>; analysis_status=not_requested.
 ```
 
-Record counts vary with framework logging and the selected time window.
+Evidence counts vary with framework logging, metric availability, and the
+selected time window. This check requires the created order's log evidence;
+it does not require metric evidence.
 
 ## Check the Prometheus demo
 
@@ -186,7 +189,73 @@ sum(
 `up = 1` means scraping succeeded; a business operation can still fail.
 The `_count` series measures completed requests, while the heap gauge is in bytes.
 An empty result means no matching series are available, not necessarily zero
-failures. Both demo checks can run without live LLM analysis.
+failures. All three demo checks run without live LLM analysis.
+
+## Check logs and metrics in one investigation
+
+Run the integration check against the running Compose services:
+
+```bash
+uv run --locked python scripts/check_investigation_metrics.py
+```
+
+The script:
+
+1. Creates an order and validates HTTP 504, PAYMENT_TIMEOUT, and the order UUID.
+2. Requests an investigation starting 30 seconds before the order was created.
+3. Repeats investigation requests with an updated end time while waiting for scrapes.
+4. Requires the simulated timeout log for that exact order.
+5. Requires `metric-up`, `metric-jvm-heap`, and `metric-http-504-counter` evidence.
+6. Requires `analysis_status` to be `not_requested`.
+
+An example successful result:
+
+```text
+Investigation metrics demo passed: order=<UUID>; metric_evidence=3; analysis_status=not_requested.
+```
+
+The polling budget is 30 seconds; an in-flight HTTP request may extend the
+elapsed time. Logs associate the timeout with the order UUID. Metric evidence
+provides aggregated service context and does not identify that order.
+The separate Prometheus check verifies that a newly generated timeout increases
+the counter; this integration check verifies that metrics reach the report.
+
+## Metric evidence semantics
+
+The collector evaluates fixed queries for the requested service and environment:
+
+| Evidence ID | Observation |
+| --- | --- |
+| `metric-up` | Minimum `up` across observed targets. Zero means at least one observed target failed to scrape. |
+| `metric-jvm-heap` | Sum of JVM heap usage in bytes across matching series. |
+| `metric-http-504-counter` | Sum of the cumulative HTTP 504 counter for `POST /api/v1/orders`. |
+
+Each evidence item contains the observed sample count, minimum, maximum, last
+value, and the full `query_range` URL. The collector summarizes the queried
+window; it does not persist the raw time series.
+
+Evaluation uses a five-second step and a fifteen-second lookback, suited to the
+demo's five-second scrape interval. Evaluation timestamps are not scrape
+timestamps: a value can come from a preceding scrape, including one just before
+the investigation start. Query bounds are rounded inward to milliseconds so
+that evaluation points stay in `[start_time, end_time)`.
+
+Empty results are reported as missing data rather than converted to zero.
+HTTP errors, invalid responses, query annotations, and missing evaluation
+points are reported in `missing_data`. Other successfully collected metrics
+and log evidence are retained.
+
+The HTTP counter is cumulative and may reset when a process restarts. Its value
+is not the number of failures during the investigation window. Heap usage alone
+does not establish a memory leak, and successful scraping does not establish
+business health. Queries aggregate matching targets; they do not prove that
+all expected instances were observed. The HTTP query currently targets the
+order-service demo route rather than discovering arbitrary application routes.
+
+Query references can be repeated while the data is retained, but they are not
+immutable snapshots. Compose references use the internal hostname `prometheus`;
+when replaying from the host, replace it with the published
+`http://127.0.0.1:9090` base address and keep the query parameters.
 
 ## Reproduce the timeout manually
 
@@ -214,7 +283,8 @@ an actual network delay or explain why a real dependency would be slow.
 - Its configuration is mounted read-only; a missing source file stops startup.
 - Root filesystems are read-only; /tmp is a temporary filesystem.
 - Host ports are bound to 127.0.0.1.
-- The investigator and Prometheus start after the Java health check succeeds.
+- Prometheus starts after the Java health check succeeds.
+- The investigator starts after both Java and Prometheus health checks succeed.
 - LLM_ENABLED is explicitly false in Compose.
 - OPENAI_API_KEY is not passed to the containers.
 - Docker build contexts include only the files required for each image.
@@ -262,6 +332,7 @@ src/ai_incident_investigator/       API, models, collection, and analysis
 tests/                             Python tests
 scripts/check_compose_demo.py       Container log investigation check
 scripts/check_prometheus_demo.py    Prometheus collection check
+scripts/check_investigation_metrics.py  Combined log and metric report check
 scripts/check_demo_logs.py          Java-to-Python log contract check
 observability/prometheus/           Prometheus scrape configuration
 examples/logs.jsonl                 Synthetic example logs
@@ -338,9 +409,13 @@ terminal A:
 
 ```bash
 LLM_ENABLED=false \
+PROMETHEUS_URL= \
 INVESTIGATOR_LOG_PATH="$PWD/data/order-service-timeout.jsonl" \
 uv run --locked uvicorn ai_incident_investigator.main:app --reload
 ```
+
+This capture uses logs only. `PROMETHEUS_URL=` explicitly disables metrics for
+this local run, even if the terminal previously exported a Prometheus address.
 
 Generate a request from the captured timestamps in terminal B:
 
@@ -377,6 +452,26 @@ For the success scenario, restart Java with DEMO_PAYMENT_MODE=normal and a fresh
 log filename. A valid order returns HTTP 201 with status ACCEPTED.
 Orders are not persisted.
 
+## Prometheus configuration
+
+`PROMETHEUS_URL` is optional. An unset or empty value disables metric collection;
+reports then include a data gap stating that the source is not connected.
+
+| Run mode | Base URL |
+| --- | --- |
+| Investigator in Compose | `http://prometheus:9090` |
+| Local investigator using the published Prometheus port | `http://127.0.0.1:9090` |
+
+For a local investigator, set the address in the process environment or in a
+private `.env` file loaded with `uv run --env-file .env`. The configured
+Prometheus must contain telemetry for the same service, environment, and time
+window as the logs. Connecting a server does not guarantee matching data.
+
+Configuration accepts an HTTP or HTTPS base URL of at most 512 characters,
+without embedded credentials, query parameters, or fragments. Authentication
+configuration is not implemented. A client is opened for each investigation
+and closed afterwards; the three metric queries share that client.
+
 ## Optional LLM analysis
 
 Live analysis is optional. The Compose demo and CI do not use it.
@@ -404,8 +499,8 @@ Python settings read process environment variables. They do not automatically
 load .env; the command above loads it through uv.
 
 When analysis is enabled, a missing or blank key prevents application startup.
-Requests send the investigation request, selected evidence, and data gaps to the
-configured model.
+Requests send the investigation request, collected log and metric evidence,
+and data gaps to the configured model.
 
 | analysis_status | Meaning |
 | --- | --- |
@@ -432,9 +527,12 @@ GitHub Actions runs three jobs on pull requests and pushes to main:
 
 - Python formatting, linting, type checks, and tests.
 - Java tests and the Java-to-Python log contract check.
-- Docker image builds, Prometheus configuration validation, and both demo checks.
+- Docker image builds, Prometheus configuration validation, and all three demo checks.
 
-Python tests disable live analysis. Adapter tests use mocked HTTP responses.
+Python tests disable live analysis and remove the Prometheus URL by default.
+Adapter tests use mocked HTTP responses. They cover missing data, partial
+failures, invalid and oversized responses, label escaping, time boundaries,
+and the integration of logs and metrics into an API report.
 CI requires no OpenAI API key.
 
 The Docker job removes its temporary containers, log volume, and metrics volume
@@ -442,13 +540,21 @@ after the checks.
 
 ## Current limits
 
-- Investigations run on request and collect one local JSONL source.
+- Investigations run on request and collect one local JSONL source and optional Prometheus data.
 - There is no continuous incident detection or service discovery.
-- At most 100 evidence records, 5 MiB scanned, and 64 KiB per line by default.
+- Log collection allows at most 100 records, 5 MiB scanned, and 64 KiB per line by default.
 - Malformed records and collection limits are reported as data gaps.
 - Rotated log archives are not collected automatically.
 - Line references apply to the source file used for that investigation.
-- Prometheus stores demo metrics, but the investigator does not yet collect metric evidence.
+- Prometheus collection supports windows of at most one hour; wider windows skip metrics.
+- Three fixed queries run sequentially with a five-second step and fifteen-second lookback.
+- Each response allows one aggregated series, at most 721 points, and at most 256 KiB.
+- Each metric query requests a two-second server timeout.
+- HTTP timeouts are three seconds per phase and one second for connection establishment;
+  these are not a total investigation deadline. Redirects and automatic retries are disabled.
+- Only metric summaries and query references enter the report; raw time series are not persisted.
+- Short incidents between evaluation points may be missed. Metric references depend on retention.
+- The HTTP 504 counter is cumulative; per-window error counts and per-instance analysis are absent.
 - Distributed traces and Actuator context collection are not connected.
 - LLM input JSON is limited to 32,000 UTF-8 bytes, excluding instructions and schema.
 - Model output is capped at 2,500 tokens.
@@ -474,14 +580,21 @@ after the checks.
   remains running while the check waits for fresh scrapes.
 - Prometheus bind mount missing: ensure
   `observability/prometheus/prometheus.yaml` exists in the checkout.
-- Metrics marked unavailable in an investigation report: this is expected
-  until the investigator's Prometheus collector is implemented.
+- Metrics source not connected: set `PROMETHEUS_URL` in the investigator process
+  environment or load it through `uv run --env-file .env`.
+- Metric query failed: check that the investigator can reach its configured
+  Prometheus address and that the server supports the query parameters.
+- No metric samples: check labels, time window, retention, and scrape health;
+  a missing HTTP 504 series can mean it has not been created yet.
+- Metric coverage incomplete: inspect the requested window and available scrapes.
+- Metric collection skipped: use a window of at most one hour with at least one
+  millisecond evaluation point.
 
 ## Roadmap
 
-The next milestone is to collect Prometheus evidence in investigation reports.
-Subsequent MVP work includes Actuator context, a task-specific evaluation set,
-and a React interface. Complete live-model validation before release.
+The next milestone is Actuator context collection. Subsequent MVP work includes
+a task-specific evaluation set and a React interface. Complete live-model
+validation before release.
 
 Later work can add centralized log sources, multiple environments, persistent
 investigations, background jobs, and investigations triggered by alerts.

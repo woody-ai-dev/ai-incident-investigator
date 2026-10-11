@@ -7,6 +7,7 @@ from ai_incident_investigator.investigations.analysis import AnalysisError, Anal
 from ai_incident_investigator.investigations.reports import InvestigationReport, RecommendedCheck
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.sources.logs import collect_logs
+from ai_incident_investigator.sources.metrics import MetricsCollection, MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -15,29 +16,38 @@ def investigate(
     request: InvestigationRequest,
     *,
     log_path: Path,
+    metrics_collector: MetricsCollector | None = None,
     analyzer: Analyzer | None = None,
 ) -> InvestigationReport:
     logs = collect_logs(log_path, request)
+    metrics = (
+        metrics_collector.collect(request)
+        if metrics_collector is not None
+        else MetricsCollection(
+            issues=["Prometheus metrics are unavailable: the metrics source is not connected."]
+        )
+    )
 
     report = InvestigationReport(
         summary=(
-            f"Collected {len(logs.evidence)} log record(s) for service '{request.service}' "
+            f"Collected {len(logs.evidence)} log record(s) and "
+            f"{len(metrics.evidence)} metric observation(s) for service '{request.service}' "
             f"in environment '{request.environment}' between "
             f"{request.start_time.isoformat()} and {request.end_time.isoformat()} "
             "(end excluded). The incident cause has not been determined."
         ),
-        evidence=logs.evidence,
+        evidence=[*logs.evidence, *metrics.evidence],
         findings=[],
         hypotheses=[],
         recommended_checks=[
             RecommendedCheck(
-                action="Review collected logs and reported data gaps.",
-                reason="Available log events may not explain the root cause.",
+                action="Review collected evidence and reported data gaps.",
+                reason="Available observations may not explain the root cause.",
             ),
         ],
         missing_data=[
             *logs.issues,
-            "Prometheus metrics are unavailable: the metrics source is not connected.",
+            *metrics.issues,
             "Distributed traces are unavailable: the trace source is not connected.",
             "Actuator context is unavailable: the Actuator source is not connected.",
         ],
