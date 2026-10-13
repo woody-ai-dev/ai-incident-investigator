@@ -11,10 +11,20 @@ demo:
   payment-mode: ${DEMO_PAYMENT_MODE:normal}
 
 management:
+  info:
+    env:
+      enabled: true
+
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+
+info:
+  app:
+    name: ${spring.application.name}
+    environment: ${demo.environment}
+    version: "@project.version@"
 
 logging:
   file:

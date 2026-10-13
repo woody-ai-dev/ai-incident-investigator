@@ -472,6 +472,37 @@ without embedded credentials, query parameters, or fragments. Authentication
 configuration is not implemented. A client is opened for each investigation
 and closed afterwards; the three metric queries share that client.
 
+### Spring Boot Actuator context
+
+The investigator can collect current application context from
+`/actuator/info` and `/actuator/health`.
+
+Configure all three variables together:
+
+- `ACTUATOR_URL`: base URL of the Actuator endpoints, including `/actuator/`.
+- `ACTUATOR_SERVICE`: service assigned to this endpoint.
+- `ACTUATOR_ENVIRONMENT`: environment assigned to this endpoint.
+
+The collector verifies application identity before collecting health.
+Only application name, environment, version, and overall health status
+are included in the report.
+
+Actuator observations are current snapshots with their actual retrieval
+timestamps. They do not establish the application's state during a
+historical incident window.
+
+If Actuator is unavailable or its identity cannot be verified, collected
+logs and Prometheus evidence are retained.
+
+The demo can report health `UP` while order requests return a simulated
+HTTP 504. Overall application health does not prove that every business
+operation succeeds.
+
+Run the Actuator integration check with:
+
+```bash
+uv run --locked python scripts/check_investigation_context.py
+
 ## Optional LLM analysis
 
 Live analysis is optional. The Compose demo and CI do not use it.
@@ -591,10 +622,6 @@ after the checks.
   millisecond evaluation point.
 
 ## Roadmap
-
-The next milestone is Actuator context collection. Subsequent MVP work includes
-a task-specific evaluation set and a React interface. Complete live-model
-validation before release.
 
 Later work can add centralized log sources, multiple environments, persistent
 investigations, background jobs, and investigations triggered by alerts.
