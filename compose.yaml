@@ -32,6 +32,11 @@ services:
     environment:
       INVESTIGATOR_LOG_PATH: "/data/order-service.jsonl"
       PROMETHEUS_URL: "http://prometheus:9090"
+
+      ACTUATOR_URL: "http://order-service:8081/actuator/"
+      ACTUATOR_SERVICE: "order-service"
+      ACTUATOR_ENVIRONMENT: "local"
+
       LLM_ENABLED: "false"
     ports:
       - "127.0.0.1:8000:8000"

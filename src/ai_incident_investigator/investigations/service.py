@@ -4,10 +4,20 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ai_incident_investigator.investigations.analysis import AnalysisError, Analyzer
-from ai_incident_investigator.investigations.reports import InvestigationReport, RecommendedCheck
+from ai_incident_investigator.investigations.reports import (
+    InvestigationReport,
+    RecommendedCheck,
+)
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
+from ai_incident_investigator.sources.context import (
+    ActuatorCollection,
+    ActuatorCollector,
+)
 from ai_incident_investigator.sources.logs import collect_logs
-from ai_incident_investigator.sources.metrics import MetricsCollection, MetricsCollector
+from ai_incident_investigator.sources.metrics import (
+    MetricsCollection,
+    MetricsCollector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +27,11 @@ def investigate(
     *,
     log_path: Path,
     metrics_collector: MetricsCollector | None = None,
+    actuator_collector: ActuatorCollector | None = None,
     analyzer: Analyzer | None = None,
 ) -> InvestigationReport:
     logs = collect_logs(log_path, request)
+
     metrics = (
         metrics_collector.collect(request)
         if metrics_collector is not None
@@ -28,15 +40,32 @@ def investigate(
         )
     )
 
+    context = (
+        actuator_collector.collect(request)
+        if actuator_collector is not None
+        else ActuatorCollection(
+            issues=["Actuator context is unavailable: the Actuator source is not connected."]
+        )
+    )
+
     report = InvestigationReport(
         summary=(
+            f"Investigated service '{request.service}' "
+            f"in environment '{request.environment}'. "
             f"Collected {len(logs.evidence)} log record(s) and "
-            f"{len(metrics.evidence)} metric observation(s) for service '{request.service}' "
-            f"in environment '{request.environment}' between "
-            f"{request.start_time.isoformat()} and {request.end_time.isoformat()} "
-            "(end excluded). The incident cause has not been determined."
+            f"{len(metrics.evidence)} metric observation(s) "
+            "for the incident window between "
+            f"{request.start_time.isoformat()} and "
+            f"{request.end_time.isoformat()} "
+            f"(end excluded), plus {len(context.evidence)} "
+            "current Actuator snapshot(s). "
+            "The incident cause has not been determined."
         ),
-        evidence=[*logs.evidence, *metrics.evidence],
+        evidence=[
+            *logs.evidence,
+            *metrics.evidence,
+            *context.evidence,
+        ],
         findings=[],
         hypotheses=[],
         recommended_checks=[
@@ -48,8 +77,8 @@ def investigate(
         missing_data=[
             *logs.issues,
             *metrics.issues,
+            *context.issues,
             "Distributed traces are unavailable: the trace source is not connected.",
-            "Actuator context is unavailable: the Actuator source is not connected.",
         ],
     )
 
@@ -61,7 +90,11 @@ def investigate(
         return report
 
     try:
-        analysis = analyzer.analyze(request, report.evidence, report.missing_data)
+        analysis = analyzer.analyze(
+            request,
+            report.evidence,
+            report.missing_data,
+        )
 
         return InvestigationReport.model_validate(
             report.model_dump() | analysis.model_dump() | {"analysis_status": "completed"}

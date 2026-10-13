@@ -13,14 +13,45 @@ from pydantic import (
 )
 
 
+class ActuatorTarget(BaseModel):
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+    base_url: HttpUrl
+    service: str = Field(min_length=1, max_length=100)
+    environment: str = Field(min_length=1, max_length=100)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: HttpUrl) -> HttpUrl:
+        if (
+            len(str(value)) > 512
+            or value.username is not None
+            or value.password is not None
+            or value.query is not None
+            or value.fragment is not None
+        ):
+            raise ValueError("ACTUATOR_URL must be a base URL without credentials or query data")
+
+        return value
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     log_path: Path = Path("data/logs.jsonl")
     prometheus_url: HttpUrl | None = None
+    actuator_target: ActuatorTarget | None = None
+
     llm_enabled: bool = False
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
-    openai_model: str = Field(default="gpt-4.1-mini-2025-04-14", min_length=1)
+    openai_model: str = Field(
+        default="gpt-4.1-mini-2025-04-14",
+        min_length=1,
+    )
 
     @field_validator("prometheus_url")
     @classmethod
@@ -49,12 +80,25 @@ class Settings(BaseModel):
 def get_settings() -> Settings:
     raw_key = os.environ.get("OPENAI_API_KEY")
 
+    actuator_target = {
+        "base_url": os.environ.get("ACTUATOR_URL") or None,
+        "service": os.environ.get("ACTUATOR_SERVICE") or None,
+        "environment": os.environ.get("ACTUATOR_ENVIRONMENT") or None,
+    }
+
     return Settings.model_validate(
         {
-            "log_path": os.environ.get("INVESTIGATOR_LOG_PATH", "data/logs.jsonl"),
+            "log_path": os.environ.get(
+                "INVESTIGATOR_LOG_PATH",
+                "data/logs.jsonl",
+            ),
             "prometheus_url": os.environ.get("PROMETHEUS_URL") or None,
+            "actuator_target": (actuator_target if any(actuator_target.values()) else None),
             "llm_enabled": os.environ.get("LLM_ENABLED", "false"),
             "openai_api_key": SecretStr(raw_key) if raw_key else None,
-            "openai_model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14"),
+            "openai_model": os.environ.get(
+                "OPENAI_MODEL",
+                "gpt-4.1-mini-2025-04-14",
+            ),
         }
     )

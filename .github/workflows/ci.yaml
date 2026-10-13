@@ -119,6 +119,9 @@ jobs:
       - name: Check investigation metric evidence
         run: uv run --locked python scripts/check_investigation_metrics.py  
 
+      - name: Check investigation Actuator context
+        run: uv run --locked python scripts/check_investigation_context.py
+
       - name: Show container logs
         if: always()
         run: docker compose logs --no-color

@@ -53,21 +53,30 @@ class OrderApiTest {
 
     @Test
     void rejectsMissingQuantity() throws Exception {
-    mvc.perform(post("/api/v1/orders")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"productId":"book-1"}
-                            """))
-                            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"book-1"}
+                                """))
+                .andExpect(status().isBadRequest());
     }
-    
+
     @Test
     void rejectsNullQuantity() throws Exception {
-    mvc.perform(post("/api/v1/orders")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"productId":"book-1","quantity":null}
-                            """))
-                            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"book-1","quantity":null}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void infoIdentifiesTheService() throws Exception {
+        mvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.app.name").value("order-service"))
+                .andExpect(jsonPath("$.app.environment").value("local"))
+                .andExpect(jsonPath("$.app.version").value("0.1.0"));
     }
 }
