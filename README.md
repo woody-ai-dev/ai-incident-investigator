@@ -3,11 +3,11 @@
 An incident investigation assistant in development, intended to help on-call
 engineers and SREs turn service telemetry into evidence-backed incident reports.
 
-The current version collects evidence from JSONL logs and Prometheus and
-optionally uses OpenAI for structured analysis. A Java demo service generates
-a reproducible payment-timeout scenario. Reports combine log records with
-historical scrape availability, JVM heap usage, and cumulative HTTP 504 counter
-observations. Automated remediation is not implemented.
+The current version collects evidence from JSONL logs, Prometheus, and Spring
+Boot Actuator, and optionally uses OpenAI for structured analysis. A Java demo
+service generates a reproducible payment-timeout scenario. Reports combine
+historical log records and metric observations with current application identity
+and health snapshots. Automated remediation is not implemented.
 
 ## Current capabilities
 
@@ -17,6 +17,8 @@ observations. Automated remediation is not implemented.
 - Log evidence with references to physical lines in the source file.
 - Historical Prometheus evidence filtered by service, environment, and time.
 - Metric summaries with query references, sample counts, minimum, maximum, and last values.
+- Current Actuator info and health snapshots after service/environment identity checks.
+- Snapshot timestamps recorded when each response is retrieved, distinct from the incident window.
 - Partial collection with explicit reporting of unavailable data and limits.
 - Optional structured LLM analysis with evidence-reference validation.
 - Evidence-preserving fallback when analysis fails or is rejected.
@@ -34,23 +36,29 @@ its explanation is correct.
 Java order-service
     -> JSONL file in the demo-logs volume
     -> /actuator/prometheus -> Prometheus -> prometheus-data volume
+    -> /actuator/info and /actuator/health -> current application context
 
 POST /investigations
     -> request validation
-    -> Python JSONL log collector and Prometheus metrics collector
+    -> Python JSONL log collector
+    -> Prometheus metrics collector
+    -> Actuator context collector
     -> combined evidence and data gaps
     -> optional OpenAI analysis
     -> output and evidence-reference validation
     -> InvestigationReport
 ```
 
-The investigator reads the shared log file and queries the Prometheus HTTP API
-when an investigation is requested. Prometheus scrapes the Java service every
-five seconds independently of investigation requests.
+The investigator reads the shared log file, queries the Prometheus HTTP API,
+and retrieves Actuator context when an investigation is requested and those
+sources are configured. Prometheus scrapes the Java service every five seconds
+independently of investigation requests. Actuator is queried directly and
+returns current snapshots rather than historical incident observations.
 
 The metrics collector uses three fixed queries. HTTP clients cannot supply
 arbitrary PromQL or select a Prometheus server in the investigation payload.
-The server address comes from application configuration.
+The server address comes from application configuration. Actuator has one
+configured service/environment target; the request cannot select its URL.
 
 The services run as separate processes and share a telemetry contract.
 The demo payment gateway is a simulation; there is no external payment provider
@@ -80,13 +88,17 @@ starts the services, and waits for their health checks.
 | Investigator health | [GET /health](http://127.0.0.1:8000/health) |
 | Investigator API documentation | [Swagger UI](http://127.0.0.1:8000/docs) |
 | Order-service health | [GET /actuator/health](http://127.0.0.1:8081/actuator/health) |
+| Order-service identity | [GET /actuator/info](http://127.0.0.1:8081/actuator/info) |
 | Order creation | `POST http://127.0.0.1:8081/api/v1/orders` |
 | Java metrics exporter | [GET /actuator/prometheus](http://127.0.0.1:8081/actuator/prometheus) |
 | Prometheus interface | [Prometheus UI](http://127.0.0.1:9090) |
 
 The Compose demo enables metric collection with
-`PROMETHEUS_URL=http://prometheus:9090`, explicitly disables LLM analysis, and
-requires no API key.
+`PROMETHEUS_URL=http://prometheus:9090` and Actuator collection with
+`ACTUATOR_URL=http://order-service:8081/actuator/`,
+`ACTUATOR_SERVICE=order-service`, and `ACTUATOR_ENVIRONMENT=local` in the
+investigator's environment. It explicitly disables LLM analysis and requires
+no API key.
 The host does not need a JDK to run the container demo; the Java image includes
 the required build and runtime environments. Host-side check scripts require uv.
 
@@ -120,9 +132,9 @@ An example successful result:
 Compose demo passed: order=<UUID>; evidence=<count>; analysis_status=not_requested.
 ```
 
-Evidence counts vary with framework logging, metric availability, and the
-selected time window. This check requires the created order's log evidence;
-it does not require metric evidence.
+Evidence counts vary with framework logging, metric and Actuator availability,
+and the selected time window. This check requires the created order's log
+evidence; it does not require metric or Actuator evidence.
 
 ## Check the Prometheus demo
 
@@ -189,7 +201,7 @@ sum(
 `up = 1` means scraping succeeded; a business operation can still fail.
 The `_count` series measures completed requests, while the heap gauge is in bytes.
 An empty result means no matching series are available, not necessarily zero
-failures. All three demo checks run without live LLM analysis.
+failures. All four demo checks run without live LLM analysis.
 
 ## Check logs and metrics in one investigation
 
@@ -333,6 +345,7 @@ tests/                             Python tests
 scripts/check_compose_demo.py       Container log investigation check
 scripts/check_prometheus_demo.py    Prometheus collection check
 scripts/check_investigation_metrics.py  Combined log and metric report check
+scripts/check_investigation_context.py  Current Actuator report check
 scripts/check_demo_logs.py          Java-to-Python log contract check
 observability/prometheus/           Prometheus scrape configuration
 examples/logs.jsonl                 Synthetic example logs
@@ -410,12 +423,16 @@ terminal A:
 ```bash
 LLM_ENABLED=false \
 PROMETHEUS_URL= \
+ACTUATOR_URL= \
+ACTUATOR_SERVICE= \
+ACTUATOR_ENVIRONMENT= \
 INVESTIGATOR_LOG_PATH="$PWD/data/order-service-timeout.jsonl" \
 uv run --locked uvicorn ai_incident_investigator.main:app --reload
 ```
 
-This capture uses logs only. `PROMETHEUS_URL=` explicitly disables metrics for
-this local run, even if the terminal previously exported a Prometheus address.
+This capture uses logs only. Empty `PROMETHEUS_URL` and all three empty
+`ACTUATOR_*` variables explicitly disable the HTTP sources for this local run,
+even if the terminal previously exported their configuration.
 
 Generate a request from the captured timestamps in terminal B:
 
@@ -472,7 +489,7 @@ without embedded credentials, query parameters, or fragments. Authentication
 configuration is not implemented. A client is opened for each investigation
 and closed afterwards; the three metric queries share that client.
 
-### Spring Boot Actuator context
+## Spring Boot Actuator context
 
 The investigator can collect current application context from
 `/actuator/info` and `/actuator/health`.
@@ -483,13 +500,39 @@ Configure all three variables together:
 - `ACTUATOR_SERVICE`: service assigned to this endpoint.
 - `ACTUATOR_ENVIRONMENT`: environment assigned to this endpoint.
 
-The collector verifies application identity before collecting health.
-Only application name, environment, version, and overall health status
-are included in the report.
+All three unset or empty values disable Actuator collection. A partially
+configured target is invalid and prevents startup. The base URL accepts HTTP
+or HTTPS, at most 512 characters, without embedded credentials, query
+parameters, or fragments. Authentication configuration is not implemented.
+
+| Run mode | Actuator base URL |
+| --- | --- |
+| Investigator in Compose | `http://order-service:8081/actuator/` |
+| Local investigator using the published Java port | `http://127.0.0.1:8081/actuator/` |
+
+The request's service and environment must match the configured target before
+any Actuator request is sent. The collector then requires `/info` to provide
+`app.name`, `app.environment`, and `app.version`, and checks the declared
+name/environment before collecting health. The demo publishes these fields
+through `info.app.*` and `management.info.env.enabled=true`; Maven replaces
+`@project.version@` with the POM version during the build.
+
+Only application name, environment, version, and overall health status are
+included in the report. Additional info fields and health component details
+are ignored. HTTP 503 with health `DOWN` or `OUT_OF_SERVICE` is retained as
+an observation rather than treated as a collection failure.
+
+| Evidence ID | Observation |
+| --- | --- |
+| `actuator-info` | Current application name, environment, and version. |
+| `actuator-health` | Current overall health status and response HTTP status. |
 
 Actuator observations are current snapshots with their actual retrieval
-timestamps. They do not establish the application's state during a
-historical incident window.
+timestamps and `end_time=None`. They do not establish the application's state
+during a historical incident window. This limitation is reported in
+`missing_data`; an additional note identifies snapshots outside the requested
+window. Each reference is the requested endpoint URL, not a persisted copy
+of the response. Repeating the URL retrieves a new snapshot.
 
 If Actuator is unavailable or its identity cannot be verified, collected
 logs and Prometheus evidence are retained.
@@ -502,6 +545,20 @@ Run the Actuator integration check with:
 
 ```bash
 uv run --locked python scripts/check_investigation_context.py
+```
+
+The check requires `actuator-info` and `actuator-health` evidence, the demo's
+name/environment/version, current health `UP`, and `analysis_status=not_requested`.
+It deliberately requests a historical window that ends before the HTTP call,
+then verifies that snapshot timestamps fall inside the actual retrieval
+interval and have no end time. This detects snapshots incorrectly dated as
+historical evidence.
+
+An example successful result:
+
+```text
+Investigation context demo passed: actuator_evidence=2; analysis_status=not_requested.
+```
 
 ## Optional LLM analysis
 
@@ -530,18 +587,21 @@ Python settings read process environment variables. They do not automatically
 load .env; the command above loads it through uv.
 
 When analysis is enabled, a missing or blank key prevents application startup.
-Requests send the investigation request, collected log and metric evidence,
+Requests send the investigation request, collected log, metric, and Actuator evidence,
 and data gaps to the configured model.
 
 | analysis_status | Meaning |
 | --- | --- |
 | not_requested | LLM analysis is disabled. |
-| skipped | Analysis is enabled, but there is no matching evidence. |
+| skipped | Analysis is enabled, but no evidence was collected from the configured sources. |
 | completed | Analysis passed output and evidence-reference validation. |
 | failed | Analysis failed or was rejected; evidence has been retained. |
 
 Findings and hypotheses must reference existing evidence IDs.
 This checks report structure and references, not the correctness of the reasoning.
+Current Actuator snapshots can remain available when no historical logs or
+metrics match. Such snapshots still count as collected evidence; their time
+limitations accompany them in the analysis input.
 
 ## Checks and CI
 
@@ -558,12 +618,15 @@ GitHub Actions runs three jobs on pull requests and pushes to main:
 
 - Python formatting, linting, type checks, and tests.
 - Java tests and the Java-to-Python log contract check.
-- Docker image builds, Prometheus configuration validation, and all three demo checks.
+- Docker image builds, Prometheus configuration validation, and all four demo checks.
 
-Python tests disable live analysis and remove the Prometheus URL by default.
+Python tests disable live analysis and remove the Prometheus URL and all three
+Actuator configuration variables by default.
 Adapter tests use mocked HTTP responses. They cover missing data, partial
 failures, invalid and oversized responses, label escaping, time boundaries,
-and the integration of logs and metrics into an API report.
+and the integration of logs and metrics into an API report. Actuator tests
+cover identity mismatches, current snapshot timestamps, HTTP 503 health,
+field filtering, and partial collection failures.
 CI requires no OpenAI API key.
 
 The Docker job removes its temporary containers, log volume, and metrics volume
@@ -571,7 +634,8 @@ after the checks.
 
 ## Current limits
 
-- Investigations run on request and collect one local JSONL source and optional Prometheus data.
+- Investigations run on request and collect one local JSONL source, optional Prometheus data,
+  and optional current context from one configured Actuator target.
 - There is no continuous incident detection or service discovery.
 - Log collection allows at most 100 records, 5 MiB scanned, and 64 KiB per line by default.
 - Malformed records and collection limits are reported as data gaps.
@@ -586,7 +650,12 @@ after the checks.
 - Only metric summaries and query references enter the report; raw time series are not persisted.
 - Short incidents between evaluation points may be missed. Metric references depend on retention.
 - The HTTP 504 counter is cumulative; per-window error counts and per-instance analysis are absent.
-- Distributed traces and Actuator context collection are not connected.
+- Actuator collects current info and health only; it cannot reconstruct historical health.
+- Actuator verifies declared service/environment identity before collecting health.
+- Each Actuator response is limited to 64 KiB; additional payload fields are ignored.
+- Valid HTTP 503 health statuses are retained; other invalid or failed responses become data gaps.
+- Actuator URLs are live references, and raw snapshots are not persisted for later replay.
+- Distributed traces are not connected.
 - LLM input JSON is limited to 32,000 UTF-8 bytes, excluding instructions and schema.
 - Model output is capped at 2,500 tokens.
 - The SDK uses a 20-second timeout and at most one retry.
@@ -620,8 +689,28 @@ after the checks.
 - Metric coverage incomplete: inspect the requested window and available scrapes.
 - Metric collection skipped: use a window of at most one hour with at least one
   millisecond evaluation point.
+- Actuator configuration invalid: set `ACTUATOR_URL`, `ACTUATOR_SERVICE`, and
+  `ACTUATOR_ENVIRONMENT` together, or clear all three to disable the source.
+- Actuator collection skipped: ensure the requested service/environment matches
+  the configured target.
+- Actuator identity could not be verified: check endpoint availability and the
+  `app.name`, `app.environment`, and `app.version` fields in `/actuator/info`.
+- Actuator identity mismatch: ensure the endpoint belongs to the requested
+  service and environment; mismatched context is rejected.
+- Actuator health unavailable: check the configured endpoint from the investigator's
+  network and inspect the Java service logs.
+- Current snapshot limitation in `missing_data`: this is intentional. Actuator
+  reports current state, including when the requested incident window is historical.
 
 ## Roadmap
+
+The next MVP milestones are:
+
+1. Evaluation scenarios and regression checks for investigation quality, including
+   evidence support, data gaps, and the distinction between historical and current state.
+   Validate real model behavior before release when live analysis is enabled.
+2. A React investigation UI for submitting requests and reviewing evidence,
+   findings, hypotheses, data gaps, and analysis status.
 
 Later work can add centralized log sources, multiple environments, persistent
 investigations, background jobs, and investigations triggered by alerts.
