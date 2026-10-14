@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "full-evidence-timeout",
+      "description": "Synthetic timeout logs and historical metric context with later health and identity snapshots.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-02T19:00:00Z",
+        "end_time": "2026-10-02T19:05:00Z",
+        "description": "An order failed with a simulated payment timeout."
+      },
+      "log_file": "timeout.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-http-504-counter",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Synthetic cumulative HTTP 504 counter: min=1, max=2, last=2. This is not a per-window failure count.",
+            "reference": "fixture:synthetic:http-504-counter",
+            "start_time": "2026-10-02T19:00:00Z",
+            "end_time": "2026-10-02T19:05:00Z"
+          }
+        ],
+        "issues": []
+      },
+      "actuator": {
+        "evidence": [
+          {
+            "id": "actuator-info",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator info snapshot: name=order-service, environment=local, version=0.1.0; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:actuator-info",
+            "start_time": "2026-10-02T20:00:00Z",
+            "end_time": null
+          },
+          {
+            "id": "actuator-health",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator health snapshot: status=UP; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:actuator-health",
+            "start_time": "2026-10-02T20:00:00Z",
+            "end_time": null
+          }
+        ],
+        "issues": [
+          "Actuator provides current snapshots, not historical observations. These snapshots do not establish the service state during the incident window.",
+          "At least one Actuator snapshot was observed outside the requested incident window."
+        ]
+      },
+      "expected": {
+        "log_evidence": [
+          {
+            "id": "log-1",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Order request received: orderId=11111111-1111-4111-8111-111111111111, productId=book-1, quantity=2",
+            "reference": "local-jsonl:line:1",
+            "start_time": "2026-10-02T19:01:00Z",
+            "end_time": null
+          },
+          {
+            "id": "log-2",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[ERROR] Payment request timed out (simulated): order=11111111-1111-4111-8111-111111111111",
+            "reference": "local-jsonl:line:2",
+            "start_time": "2026-10-02T19:01:05Z",
+            "end_time": null
+          }
+        ],
+        "missing_data_contains": [
+          "Actuator provides current snapshots, not historical observations.",
+          "outside the requested incident window",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Does a future analysis distinguish the recorded simulated timeout from an established root cause?",
+        "Does it keep the cumulative counter separate from the failure count during the incident window?",
+        "Does it avoid using the later UP snapshot as proof of health during the incident?"
+      ]
+    },
+    {
+      "id": "no-matching-evidence",
+      "description": "All log records belong to another service, environment, or time window; HTTP sources are not configured.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-02T19:00:00Z",
+        "end_time": "2026-10-02T19:05:00Z",
+        "description": "Investigate an incident for which matching telemetry is unavailable."
+      },
+      "log_file": "filtered.jsonl",
+      "metrics": null,
+      "actuator": null,
+      "expected": {
+        "log_evidence": [],
+        "missing_data_contains": [
+          "no matching records were found",
+          "Prometheus metrics are unavailable: the metrics source is not connected.",
+          "Actuator context is unavailable: the Actuator source is not connected.",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Would a future analysis state that the available data cannot establish a cause?",
+        "Would it distinguish missing telemetry from evidence that no failures occurred?"
+      ]
+    },
+    {
+      "id": "partial-source-outage",
+      "description": "Matching timeout logs remain available while recorded Prometheus and Actuator collection attempts fail.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-02T19:00:00Z",
+        "end_time": "2026-10-02T19:05:00Z",
+        "description": "A simulated payment timeout occurred, but HTTP telemetry sources are unavailable."
+      },
+      "log_file": "timeout.jsonl",
+      "metrics": {
+        "evidence": [],
+        "issues": [
+          "Prometheus metric query failed: synthetic recorded source outage."
+        ]
+      },
+      "actuator": {
+        "evidence": [],
+        "issues": [
+          "Actuator info could not be collected or validated; health collection was skipped because target identity could not be verified."
+        ]
+      },
+      "expected": {
+        "log_evidence": [
+          {
+            "id": "log-1",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Order request received: orderId=11111111-1111-4111-8111-111111111111, productId=book-1, quantity=2",
+            "reference": "local-jsonl:line:1",
+            "start_time": "2026-10-02T19:01:00Z",
+            "end_time": null
+          },
+          {
+            "id": "log-2",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[ERROR] Payment request timed out (simulated): order=11111111-1111-4111-8111-111111111111",
+            "reference": "local-jsonl:line:2",
+            "start_time": "2026-10-02T19:01:05Z",
+            "end_time": null
+          }
+        ],
+        "missing_data_contains": [
+          "Prometheus metric query failed",
+          "Actuator info could not be collected or validated",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Would a future analysis retain the logged timeout while identifying the unavailable sources?",
+        "Would it avoid treating a telemetry-source outage as the established cause of the order failure?"
+      ]
+    },
+    {
+      "id": "current-health-only",
+      "description": "Only later Actuator identity and UP health snapshots are available; no historical logs match and metrics are not configured.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-02T19:00:00Z",
+        "end_time": "2026-10-02T19:05:00Z",
+        "description": "Assess an earlier reported order failure with current context only."
+      },
+      "log_file": "filtered.jsonl",
+      "metrics": null,
+      "actuator": {
+        "evidence": [
+          {
+            "id": "actuator-info",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator info snapshot: name=order-service, environment=local, version=0.1.0; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:actuator-info",
+            "start_time": "2026-10-02T20:00:00Z",
+            "end_time": null
+          },
+          {
+            "id": "actuator-health",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator health snapshot: status=UP; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:actuator-health",
+            "start_time": "2026-10-02T20:00:00Z",
+            "end_time": null
+          }
+        ],
+        "issues": [
+          "Actuator provides current snapshots, not historical observations. These snapshots do not establish the service state during the incident window.",
+          "At least one Actuator snapshot was observed outside the requested incident window."
+        ]
+      },
+      "expected": {
+        "log_evidence": [],
+        "missing_data_contains": [
+          "no matching records were found",
+          "Prometheus metrics are unavailable: the metrics source is not connected.",
+          "Actuator provides current snapshots, not historical observations.",
+          "outside the requested incident window",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Would a future analysis distinguish current UP status from the unknown health during the reported incident?",
+        "Would it avoid asserting that the earlier order failure has been resolved from overall health alone?"
+      ]
+    }
+  ]
+}

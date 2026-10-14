@@ -632,6 +632,27 @@ CI requires no OpenAI API key.
 The Docker job removes its temporary containers, log volume, and metrics volume
 after the checks.
 
+## Offline investigation evaluation
+
+Run the synthetic scenario suite:
+
+```bash
+uv run --locked python scripts/evaluate_investigations.py
+```
+
+The suite calls the real investigation service with fixed log fixtures and
+recorded metric and Actuator results. It verifies evidence preservation,
+service identity, historical time windows, current snapshot timestamps, and
+reported data gaps.
+
+Results are saved to `data/evaluation-results.json`. CI runs the suite and
+uploads the results as an artifact.
+
+No running services or API keys are required. This suite evaluates pipeline
+contracts; LLM semantic quality is explicitly marked as not evaluated.
+
+See [the evaluation dataset and review rubric](evals/README.md).
+
 ## Current limits
 
 - Investigations run on request and collect one local JSONL source, optional Prometheus data,
@@ -706,9 +727,8 @@ after the checks.
 
 The next MVP milestones are:
 
-1. Evaluation scenarios and regression checks for investigation quality, including
-   evidence support, data gaps, and the distinction between historical and current state.
-   Validate real model behavior before release when live analysis is enabled.
+1. Validate real model outputs against the prepared scenarios and manual review
+   rubric before release, including repeated runs and prompt/model metadata.
 2. A React investigation UI for submitting requests and reviewing evidence,
    findings, hypotheses, data gaps, and analysis status.
 

@@ -1,0 +1,4 @@
+{"timestamp":"2026-10-02T19:01:00Z","service":"billing-service","environment":"local","level":"ERROR","message":"Another service's synthetic error"}
+{"timestamp":"2026-10-02T19:01:00Z","service":"order-service","environment":"staging","level":"ERROR","message":"Another environment's synthetic error"}
+{"timestamp":"2026-10-02T18:59:59Z","service":"order-service","environment":"local","level":"INFO","message":"Record before the incident window"}
+{"timestamp":"2026-10-02T19:05:00Z","service":"order-service","environment":"local","level":"INFO","message":"Record at the exclusive end of the incident window"}
