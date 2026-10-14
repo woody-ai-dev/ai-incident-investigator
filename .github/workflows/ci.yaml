@@ -42,6 +42,18 @@ jobs:
 
       - name: Run tests
         run: uv run --locked pytest
+      
+      - name: Evaluate offline investigation scenarios
+        run: uv run --locked python scripts/evaluate_investigations.py
+
+      - name: Upload evaluation results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-evaluation-results
+          path: data/evaluation-results.json
+          if-no-files-found: ignore
+          retention-days: 7
 
   java-demo:
     runs-on: ubuntu-latest

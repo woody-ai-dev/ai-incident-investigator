@@ -1,0 +1,4 @@
+{"timestamp":"2026-10-02T19:01:00Z","service":"order-service","environment":"local","level":"INFO","message":"Order request received: orderId=11111111-1111-4111-8111-111111111111, productId=book-1, quantity=2"}
+{"timestamp":"2026-10-02T19:01:05Z","service":"order-service","environment":"local","level":"ERROR","message":"Payment request timed out (simulated): order=11111111-1111-4111-8111-111111111111"}
+{"timestamp":"2026-10-02T19:01:10Z","service":"billing-service","environment":"local","level":"ERROR","message":"Unrelated synthetic billing error"}
+{"timestamp":"2026-10-02T19:05:00Z","service":"order-service","environment":"local","level":"INFO","message":"Record at the exclusive end of the incident window"}
