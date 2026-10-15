@@ -23,8 +23,9 @@ and health snapshots. Automated remediation is not implemented.
 - Optional structured LLM analysis with evidence-reference validation.
 - Evidence-preserving fallback when analysis fails or is rejected.
 - A Spring Boot demo service with normal and payment-timeout modes.
-- Docker images and a three-service Docker Compose demo.
-- Python tests, Java API tests, and checks for telemetry collection and report integration.
+- A React and TypeScript UI for submitting investigations and reviewing reports.
+- Docker images and a four-service Docker Compose demo.
+- Python and frontend tests, Java API tests, and telemetry integration checks.
 
 With analysis disabled, reports contain evidence and data gaps, with empty
 findings and hypotheses. A structurally valid model report does not prove that
@@ -33,6 +34,8 @@ its explanation is correct.
 ## Architecture
 
 ```text
+React UI -> /api -> frontend proxy -> FastAPI
+
 Java order-service
     -> JSONL file in the demo-logs volume
     -> /actuator/prometheus -> Prometheus -> prometheus-data volume
@@ -71,7 +74,7 @@ Requirements:
 - Docker Engine with Docker Compose, or Docker Desktop.
 - A running Docker daemon.
 - Network access for the first image build and dependency downloads.
-- Ports 8000, 8081, and 9090 available on the host.
+- Ports 3000, 8000, 8081, and 9090 available on the host.
 
 Run commands from the repository root:
 
@@ -86,6 +89,7 @@ starts the services, and waits for their health checks.
 | Service | Address |
 | --- | --- |
 | Investigator health | [GET /health](http://127.0.0.1:8000/health) |
+| Investigation UI | [Local interface](http://127.0.0.1:3000) |
 | Investigator API documentation | [Swagger UI](http://127.0.0.1:8000/docs) |
 | Order-service health | [GET /actuator/health](http://127.0.0.1:8081/actuator/health) |
 | Order-service identity | [GET /actuator/info](http://127.0.0.1:8081/actuator/info) |
@@ -201,7 +205,7 @@ sum(
 `up = 1` means scraping succeeded; a business operation can still fail.
 The `_count` series measures completed requests, while the heap gauge is in bytes.
 An empty result means no matching series are available, not necessarily zero
-failures. All four demo checks run without live LLM analysis.
+failures. All telemetry demo checks run without live LLM analysis.
 
 ## Check logs and metrics in one investigation
 
@@ -288,7 +292,8 @@ an actual network delay or explain why a real dependency would be slow.
 - Python dependencies are installed from uv.lock without development packages.
 - The Python application is installed in non-editable mode.
 - Java is built with Maven Wrapper and JDK 25, then runs in a JRE image.
-- Both applications run as a non-root user with UID 10001.
+- Python and Java run as a non-root user with UID 10001.
+- The frontend serves its built assets from an unprivileged Nginx image.
 - Java writes logs to the named demo-logs volume.
 - Python mounts the same volume read-only.
 - Prometheus runs as the image's non-root user and stores metrics in its own volume.
@@ -297,12 +302,14 @@ an actual network delay or explain why a real dependency would be slow.
 - Host ports are bound to 127.0.0.1.
 - Prometheus starts after the Java health check succeeds.
 - The investigator starts after both Java and Prometheus health checks succeed.
+- The frontend starts after the investigator health check succeeds.
 - LLM_ENABLED is explicitly false in Compose.
 - OPENAI_API_KEY is not passed to the containers.
 - Docker build contexts include only the files required for each image.
 
-Inside containers, both HTTP servers listen on 0.0.0.0.
-This allows Docker's published ports to reach them.
+The Python and Java HTTP servers listen on 0.0.0.0 inside their containers.
+Frontend Nginx listens on port 8080 and is published on host port 3000.
+This allows Docker's published ports to reach the applications.
 
 The Compose configuration uses /data/order-service.jsonl for both the Java log
 destination and the Python log source.
@@ -341,6 +348,7 @@ Dockerfile                         Python image
 compose.yaml                       Local container demo
 .github/workflows/ci.yaml           CI checks
 src/ai_incident_investigator/       API, models, collection, and analysis
+frontend/                          React/TypeScript UI, tests, and Nginx image
 tests/                             Python tests
 scripts/check_compose_demo.py       Container log investigation check
 scripts/check_prometheus_demo.py    Prometheus collection check
@@ -614,11 +622,13 @@ uv run --locked mypy
 uv run --locked pytest
 ```
 
-GitHub Actions runs three jobs on pull requests and pushes to main:
+GitHub Actions runs four jobs on pull requests and pushes to main:
 
 - Python formatting, linting, type checks, and tests.
 - Java tests and the Java-to-Python log contract check.
-- Docker image builds, Prometheus configuration validation, and all four demo checks.
+- Frontend formatting, linting, tests, and TypeScript/production build checks.
+- Docker image builds, Prometheus configuration validation, all four telemetry
+  demo checks, and a repeated log investigation through the frontend API proxy.
 
 Python tests disable live analysis and remove the Prometheus URL and all three
 Actuator configuration variables by default.
@@ -631,6 +641,81 @@ CI requires no OpenAI API key.
 
 The Docker job removes its temporary containers, log volume, and metrics volume
 after the checks.
+
+## Investigation UI
+
+The React and TypeScript interface submits requests to the existing FastAPI API.
+In Compose, open [the investigation UI](http://127.0.0.1:3000). Generate a timeout
+using the manual order request above, then investigate `order-service` in the
+`local` environment with a window covering that request. The default Last 15 minutes
+window refreshes on each submission; editing either date creates a custom window.
+Inputs use the browser timezone and are converted
+to UTC for the API. Stop waiting cancels the browser request; it does not cancel
+server-side processing.
+
+For local development, use Node.js 24 and keep the investigator running on
+port 8000. Run from the repository root:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run dev
+```
+
+Open [the local development UI](http://127.0.0.1:5173).
+
+The local Vite server proxies `/api/` to `127.0.0.1:8000`; the Compose frontend
+uses Nginx to proxy the same path to `investigator:8000`. No browser API key is
+required. The interface is a local demo and has no authentication yet.
+
+Service and environment selectors use the explicit demo target list in
+`frontend/src/features/investigations/targets.ts`: currently `order-service` and
+`local`. This list is frontend configuration, not automatic service discovery.
+The menus use Radix Select for keyboard navigation and focus management. One menu
+can open at a time. Menus float above the form without changing the positions of
+its fields. Long lists scroll inside the menu, whose height is capped at 280 px
+and the available viewport height. Escape keeps the selected value. Reduced
+motion disables animation.
+The request status remains visible beside the submit button. Valid submission
+keeps the viewport in place; invalid inputs receive an error message and focus.
+On wide screens, the form and flow use equal columns and matching card sizes.
+The last received report remains visible while a new investigation runs, fails,
+or is stopped, with an explicit notice when it belongs to the previous request.
+
+The evidence flow animates while a request is pending. It does not represent
+real-time source progress; the API returns the report as a single response.
+Receiving a report also plays a brief signal along the paths containing returned
+evidence, so fast responses remain visible without delaying the report or
+pretending that collection is still running.
+After that response, counts come from returned evidence. Zero observations do
+not establish that a source is disconnected. Actuator snapshots are displayed
+separately from historical observations. The UI supports reduced motion.
+Hovering over a source highlights its node and connections and shows source context.
+Mouse highlighting clears when the pointer leaves, including after a click.
+Keyboard focus provides the same source context until focus moves away. On touch
+screens, tapping a source button shows its context until focus moves elsewhere.
+
+Findings and hypotheses link to their evidence IDs. Source references are shown
+as text because JSONL references and Compose hostnames are not public web links.
+Logs and model text are rendered as text. Export JSON saves a versioned envelope
+with `schema_version: 1`, the original `request`, and its `report`, so service,
+environment, and the exact investigation window travel with the evidence.
+Partial-source failures and failed LLM analysis retain available evidence.
+
+Run frontend checks from the repository root:
+
+```bash
+npm --prefix frontend run format:check
+npm --prefix frontend run lint
+npm --prefix frontend test
+npm --prefix frontend run build
+```
+
+Validate the Compose frontend proxy using the existing demo:
+
+```bash
+uv run --locked python scripts/check_compose_demo.py \
+  --investigator-url http://127.0.0.1:3000/api
+```
 
 ## Offline investigation evaluation
 
@@ -681,13 +766,16 @@ See [the evaluation dataset and review rubric](evals/README.md).
 - Model output is capped at 2,500 tokens.
 - The SDK uses a 20-second timeout and at most one retry.
 - Requests use store=False; this does not imply zero provider data retention.
-- No persistent investigation history, background workers, or React UI.
+- No persistent investigation history or background workers. The UI keeps one report in memory.
 - No automatic patch generation, pull requests, deployment, or on-call notifications.
 
 ## Troubleshooting
 
 - Docker daemon unavailable: start Docker Desktop or Docker Engine.
-- Port already allocated: stop an existing local service using port 8000, 8081, or 9090.
+- Port already allocated: stop an existing local service using port 3000, 8000, 8081, or 9090.
+- Local frontend unavailable: check port 5173 and start `npm --prefix frontend run dev`.
+- Frontend API request fails: confirm the investigator is healthy on port 8000;
+  for Compose, inspect the frontend and investigator logs.
 - Container unhealthy: inspect docker compose ps and docker compose logs.
 - No matching evidence: check the source file, service, environment, and time window.
 - Expected HTTP 504 but received 201: ensure the payment-timeout demo is running.
@@ -729,7 +817,7 @@ The next MVP milestones are:
 
 1. Validate real model outputs against the prepared scenarios and manual review
    rubric before release, including repeated runs and prompt/model metadata.
-2. A React investigation UI for submitting requests and reviewing evidence,
+2. Browser end-to-end coverage and further UI usability improvements for reviewing evidence,
    findings, hypotheses, data gaps, and analysis status.
 
 Later work can add centralized log sources, multiple environments, persistent

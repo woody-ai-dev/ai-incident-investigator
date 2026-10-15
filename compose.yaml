@@ -1,6 +1,23 @@
 name: ai-incident-investigator
 
 services:
+  frontend:
+    build:
+      context: ./frontend
+    init: true
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      investigator:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   order-service:
     build:
       context: ./demo-services/order-service
