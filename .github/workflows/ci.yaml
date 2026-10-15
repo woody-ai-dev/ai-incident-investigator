@@ -57,7 +57,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -78,8 +78,22 @@ jobs:
         run: npm run lint
       - name: Test frontend
         run: npm test
-      - name: Build frontend
-        run: npm run build
+      - name: Check browser test types
+        run: npm run check:e2e
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test production UI in Chromium
+        run: npm run test:e2e
+      - name: Upload browser test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-ui-results
+          path: |
+            frontend/playwright-report/ui/
+            frontend/test-results/ui/
+          if-no-files-found: ignore
+          retention-days: 7
 
   java-demo:
     runs-on: ubuntu-latest
@@ -126,6 +140,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
       - name: Install uv
         uses: astral-sh/setup-uv@v9.0.0
         with:
@@ -164,6 +193,21 @@ jobs:
         run: >-
           uv run --locked python scripts/check_compose_demo.py
           --investigator-url http://127.0.0.1:3000/api
+
+      - name: Test the Compose UI in Chromium
+        working-directory: frontend
+        run: npm run test:e2e:compose
+
+      - name: Upload Compose browser test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-compose-results
+          path: |
+            frontend/playwright-report/compose/
+            frontend/test-results/compose/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Show container logs
         if: always()
