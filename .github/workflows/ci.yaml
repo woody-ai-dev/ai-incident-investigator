@@ -42,7 +42,7 @@ jobs:
 
       - name: Run tests
         run: uv run --locked pytest
-      
+
       - name: Evaluate offline investigation scenarios
         run: uv run --locked python scripts/evaluate_investigations.py
 
@@ -54,6 +54,32 @@ jobs:
           path: data/evaluation-results.json
           if-no-files-found: ignore
           retention-days: 7
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Check frontend formatting
+        run: npm run format:check
+      - name: Lint frontend
+        run: npm run lint
+      - name: Test frontend
+        run: npm test
+      - name: Build frontend
+        run: npm run build
 
   java-demo:
     runs-on: ubuntu-latest
@@ -92,7 +118,7 @@ jobs:
           demo-services/order-service/target/test-logs/timeout.jsonl
 
   docker-demo:
-    needs: [checks, java-demo]
+    needs: [checks, java-demo, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -127,12 +153,17 @@ jobs:
 
       - name: Check Prometheus metrics
         run: uv run --locked python scripts/check_prometheus_demo.py
-      
+
       - name: Check investigation metric evidence
-        run: uv run --locked python scripts/check_investigation_metrics.py  
+        run: uv run --locked python scripts/check_investigation_metrics.py
 
       - name: Check investigation Actuator context
         run: uv run --locked python scripts/check_investigation_context.py
+
+      - name: Check the frontend API proxy
+        run: >-
+          uv run --locked python scripts/check_compose_demo.py
+          --investigator-url http://127.0.0.1:3000/api
 
       - name: Show container logs
         if: always()

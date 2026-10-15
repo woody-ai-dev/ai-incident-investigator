@@ -1,0 +1,252 @@
+.card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e3e8f0;
+  border-radius: 14px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.heading h2 {
+  margin: 6px 0 0;
+  color: #182536;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  color: #6b7990;
+  font-weight: 650;
+}
+.badge {
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #edf3ff;
+  color: #315a9e;
+  font-size: 12px;
+}
+.diagram {
+  display: block;
+  width: 100%;
+  height: 190px;
+  max-height: 190px;
+  margin: 12px 0;
+  flex: 0 0 auto;
+}
+.path {
+  fill: none;
+  stroke: #d4deea;
+  stroke-width: 2;
+  transition:
+    stroke 160ms ease,
+    stroke-width 160ms ease,
+    filter 160ms ease;
+}
+.path[data-active="true"] {
+  stroke: #2764e7;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 3px #2764e733);
+}
+.sourceGroup {
+  cursor: pointer;
+}
+.node,
+.reportNode {
+  transition:
+    fill 160ms ease,
+    stroke 160ms ease,
+    filter 160ms ease;
+}
+.node[data-active="true"],
+.reportNode[data-active="true"] {
+  fill: #edf4ff;
+  stroke: #2764e7;
+  filter: drop-shadow(0 3px 5px #2764e71f);
+}
+.node {
+  fill: #fff;
+  stroke: #dce4ee;
+  stroke-width: 1.5;
+}
+.reportNode {
+  fill: #f0f5ff;
+  stroke: #a8c0f6;
+  stroke-width: 1.5;
+}
+.dot {
+  fill: #2764e7;
+  stroke: #2764e7;
+  stroke-width: 1.25;
+}
+.dot[data-empty="true"] {
+  fill: #fff;
+  stroke: #8290a5;
+}
+.title {
+  fill: #182536;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.detail {
+  fill: #66758a;
+  font-family: inherit;
+  font-size: 11px;
+}
+.caption {
+  margin-top: auto;
+  color: #66758a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.caption p {
+  margin: 4px 0;
+}
+.counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.sourceControl {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 1px solid #e0e8f2;
+  border-radius: 8px;
+  background: #fff;
+  color: #52647b;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+.sourceControl[data-active="true"] {
+  border-color: #a6c2f5;
+  background: #edf4ff;
+  color: #1b53b1;
+}
+.sourceControl:focus-visible {
+  outline: none;
+}
+.sourceControl:focus-visible[data-focus-visible="true"] {
+  outline: 2px solid #2764e7;
+  outline-offset: 3px;
+}
+.context {
+  min-height: 104px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #e0e8f2;
+  border-radius: 10px;
+  background: #f7faff;
+}
+.context strong {
+  color: #29476c;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.signal {
+  fill: none;
+  stroke: #2764e7;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 12 112;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px #2764e766);
+}
+.pending {
+  animation: travel 1.3s linear infinite;
+}
+.receipt {
+  animation: receive 1.4s ease-in-out forwards;
+}
+.receipt[data-signal-source="report"] {
+  animation-duration: 0.6s;
+  animation-delay: 1.4s;
+  animation-fill-mode: both;
+}
+.phaseDescription {
+  min-height: 4.8em;
+}
+.loading .node:not([data-active="true"]) {
+  stroke: #a8c0f6;
+}
+
+@keyframes travel {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+@keyframes receive {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 12;
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+    stroke-dashoffset: -100;
+  }
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -100;
+  }
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 18px;
+  }
+  .diagram {
+    height: 170px;
+  }
+  .counts {
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .path,
+  .node,
+  .reportNode,
+  .sourceControl {
+    transition: none;
+  }
+  .pending,
+  .receipt {
+    animation: none;
+    stroke-dasharray: none;
+    opacity: 0.45;
+  }
+}
