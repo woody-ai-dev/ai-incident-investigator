@@ -14,7 +14,9 @@ export default defineConfig({
       },
     },
   },
+  preview: { proxy: {} },
   test: {
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     clearMocks: true,

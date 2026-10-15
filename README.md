@@ -626,9 +626,9 @@ GitHub Actions runs four jobs on pull requests and pushes to main:
 
 - Python formatting, linting, type checks, and tests.
 - Java tests and the Java-to-Python log contract check.
-- Frontend formatting, linting, tests, and TypeScript/production build checks.
+- Frontend formatting, linting, component and browser tests, E2E type checks, and production builds.
 - Docker image builds, Prometheus configuration validation, all four telemetry
-  demo checks, and a repeated log investigation through the frontend API proxy.
+  demo checks, a repeated log investigation through the frontend API proxy, and a browser smoke test.
 
 Python tests disable live analysis and remove the Prometheus URL and all three
 Actuator configuration variables by default.
@@ -716,6 +716,41 @@ Validate the Compose frontend proxy using the existing demo:
 uv run --locked python scripts/check_compose_demo.py \
   --investigator-url http://127.0.0.1:3000/api
 ```
+
+## Browser end-to-end checks
+
+The local browser suite uses a production build on port 4173 and fixed API
+responses. It checks evidence navigation, JSON download, failure recovery,
+floating menus, and mouse/keyboard source inspection. The preview does not proxy
+requests to the investigator; no backend or API key is required for this suite.
+
+From `frontend/`:
+
+```bash
+npx playwright install chromium
+npm run check:e2e
+npm run test:e2e
+npx playwright show-report playwright-report/ui
+```
+
+The Compose browser smoke test uses the real Java service, frontend Nginx proxy,
+and investigator. It creates a new simulated timeout and requires that exact
+order's evidence in the browser report, with LLM analysis disabled.
+
+The default Compose test addresses are `http://127.0.0.1:3000` for the frontend
+and `http://127.0.0.1:8081` for Java. Test runners in another network can override
+them with `E2E_COMPOSE_URL` and `E2E_ORDERS_URL`.
+
+From the repository root:
+
+```bash
+docker compose up --build --wait --wait-timeout 180
+npm --prefix frontend run test:e2e:compose
+```
+
+Browser traces and failure screenshots are saved under `frontend/test-results/`.
+HTML reports are saved under `frontend/playwright-report/`. CI uploads these
+artifacts for seven days. These generated directories are excluded from Git.
 
 ## Offline investigation evaluation
 
@@ -817,8 +852,6 @@ The next MVP milestones are:
 
 1. Validate real model outputs against the prepared scenarios and manual review
    rubric before release, including repeated runs and prompt/model metadata.
-2. Browser end-to-end coverage and further UI usability improvements for reviewing evidence,
-   findings, hypotheses, data gaps, and analysis status.
 
 Later work can add centralized log sources, multiple environments, persistent
 investigations, background jobs, and investigations triggered by alerts.

@@ -3,3 +3,5 @@ dist/
 coverage/
 package-lock.json
 pnpm-lock.yaml
+playwright-report/
+test-results/
