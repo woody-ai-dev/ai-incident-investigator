@@ -1,7 +1,8 @@
 # Offline investigation evaluation
 
 This dataset checks the investigation pipeline using synthetic, fixed inputs.
-It is a foundation for later LLM evaluation, not a benchmark of model accuracy.
+It checks pipeline contracts, not model accuracy. Real-model checks are run
+separately and documented in the [validation record](../docs/validation/2026-10-16.md).
 
 The runner calls the real `investigate()` service and JSONL collector.
 Metrics and Actuator are supplied as recorded collector results. No HTTP
@@ -68,5 +69,6 @@ Use the following rubric for each actual analysis:
 | Data limitations | Ignores gaps or confuses current and historical state. | Acknowledges some limitations. | Accounts for missing data and observation times. |
 | Next checks | Irrelevant or claims unperformed actions. | Relevant but vague. | Concrete checks that could distinguish the remaining hypotheses. |
 
-Do not interpret 4/4 offline pipeline passes as 100% LLM accuracy. Real model
-quality remains unmeasured until actual outputs are evaluated.
+Do not interpret 4/4 offline pipeline passes as 100% LLM accuracy. A separate
+real-model review has been recorded; its small synthetic dataset and limited
+repetitions do not establish production accuracy or reliability.

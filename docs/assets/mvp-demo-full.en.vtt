@@ -1,0 +1,42 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:08.000
+AI Incident Investigator — local MVP
+A real model response on synthetic demo telemetry.
+
+00:00:08.000 --> 00:00:17.000
+Choose the service and environment.
+Menus float above the form and support keyboard navigation.
+
+00:00:17.000 --> 00:00:31.000
+The test creates a fresh Java order that returns simulated HTTP 504.
+The order ID links the investigation to its exact log records.
+
+00:00:31.000 --> 00:00:44.000
+Investigate sends one browser request to the Python backend.
+Logs, Prometheus summaries and current Actuator snapshots reach the real model.
+
+00:00:44.000 --> 00:00:57.000
+The report retains evidence from all three sources.
+The animation shows activity and returned counts, not live per-source progress.
+
+00:00:57.000 --> 00:01:10.000
+Open a log to inspect its source reference and timestamp.
+The timeout is explicitly marked as simulated.
+
+00:01:10.000 --> 00:01:25.000
+AI interpretation still requires engineering review.
+Successful scrapes do not prove continuous business health.
+
+00:01:25.000 --> 00:01:38.000
+Known model limitation: heap was called stable without a baseline.
+Check every claim against the linked observations before acting.
+
+00:01:38.000 --> 00:01:48.000
+Collection gaps remain visible; traces are not connected.
+Current Actuator snapshots cannot reconstruct historical health.
+
+00:01:48.000 --> 00:01:55.000
+Export JSON preserves the original request and unedited report.
+Read-only assistance: no automatic repair, deployment or on-call paging.
+

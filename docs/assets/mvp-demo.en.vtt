@@ -1,0 +1,45 @@
+WEBVTT
+
+NOTE Edited walkthrough; idle time omitted. Synthetic incident; real model response.
+
+00:00:00.000 --> 00:00:06.000
+Real model response on synthetic demo telemetry.
+Read-only assistance for an engineer reviewing the incident.
+
+00:00:06.000 --> 00:00:13.000
+The failed order ID keeps the investigation tied to a specific event.
+
+00:00:13.000 --> 00:00:20.000
+The animation shows request activity and returned evidence counts.
+It does not show live progress for each source.
+
+00:00:20.000 --> 00:00:28.000
+The model response is preserved as returned.
+Its claims still need engineering review.
+
+00:00:28.000 --> 00:00:35.000
+The finding identifies a simulated timeout and cites log-28.
+
+00:00:35.000 --> 00:00:43.000
+The source reference and observation time remain visible.
+This record does not establish a real downstream outage.
+
+00:00:43.000 --> 00:00:49.000
+The model called heap usage stable without enough context.
+This limitation stays visible in the demo.
+
+00:00:49.000 --> 00:00:57.000
+Engineering review checks support, scope and missing context.
+These are limitations of the captured model interpretation.
+
+00:00:57.000 --> 00:01:04.000
+Current Actuator snapshots cannot reconstruct historical health.
+Distributed traces are not connected in this MVP.
+
+00:01:04.000 --> 00:01:16.000
+The full JSON export is included in the repository.
+Only selected original fields are shown here for readability.
+
+00:01:16.000 --> 00:01:22.000
+Explore the code, architecture, validation results and full recording.
+

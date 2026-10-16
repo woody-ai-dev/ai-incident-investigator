@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["e2e", "playwright.config.ts", "playwright.compose.config.ts"]
+  "include": [
+    "e2e",
+    "playwright.config.ts",
+    "playwright.compose.config.ts",
+    "playwright.live.config.ts"
+  ]
 }

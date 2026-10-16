@@ -1,9 +1,11 @@
 # AI Incident Investigator
 
-An incident investigation assistant in development, intended to help on-call
-engineers and SREs turn service telemetry into evidence-backed incident reports.
+[![CI (main)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml/badge.svg?branch=main&event=push)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml?query=branch%3Amain)
 
-The current version collects evidence from JSONL logs, Prometheus, and Spring
+An incident investigation assistant that helps on-call engineers and SREs turn
+service telemetry into evidence-backed reports.
+
+The MVP collects evidence from JSONL logs, Prometheus, and Spring
 Boot Actuator, and optionally uses OpenAI for structured analysis. A Java demo
 service generates a reproducible payment-timeout scenario. Reports combine
 historical log records and metric observations with current application identity
@@ -26,31 +28,44 @@ and health snapshots. Automated remediation is not implemented.
 - A React and TypeScript UI for submitting investigations and reviewing reports.
 - Docker images and a four-service Docker Compose demo.
 - Python and frontend tests, Java API tests, and telemetry integration checks.
+- An opt-in LLM evaluation runner with repeatable scenarios, run metadata, and checkpoints.
 
 With analysis disabled, reports contain evidence and data gaps, with empty
 findings and hypotheses. A structurally valid model report does not prove that
 its explanation is correct.
 
+## Try the MVP
+
+Start with the [Docker Compose quick start](#quick-start-with-docker-compose).
+The default demo runs locally without an OpenAI API key. Create a controlled
+payment timeout, investigate it in the UI, inspect evidence and data gaps, and
+export the report as JSON.
+
+- [Demo walkthrough and recording](docs/demo.md)
+- [Validation record and real-model evaluation limits](docs/validation/2026-10-16.md)
+- [Release notes for v0.1.0](docs/releases/v0.1.0.md)
+- [GitHub release guide](docs/releasing.md)
+
+## Recorded demo
+
+[![Recorded investigation with a real model](docs/assets/mvp-demo-poster.png)](docs/assets/mvp-demo.mp4)
+
+[Watch or download the MP4](docs/assets/mvp-demo.mp4) — 1:22, Full HD 16:9,
+English captions. This edited walkthrough uses real browser footage and an
+unedited model response on synthetic telemetry. Idle time and repetitive
+navigation are removed; close-ups and labelled excerpts explain the evidence.
+The captions identify remaining model interpretation errors; this assistant
+requires engineering review of its conclusions. The
+[full captioned recording](docs/assets/mvp-demo-full.mp4) (1:55) is also available.
+See the
+[actual exported report](docs/validation/live-ui-2026-10-16.json) and
+[validation notes](docs/validation/2026-10-16.md#fresh-ui-investigation).
+
 ## Architecture
 
-```text
-React UI -> /api -> frontend proxy -> FastAPI
+![MVP architecture: investigation request, telemetry sources, analysis, and evaluation](docs/architecture/architecture.svg)
 
-Java order-service
-    -> JSONL file in the demo-logs volume
-    -> /actuator/prometheus -> Prometheus -> prometheus-data volume
-    -> /actuator/info and /actuator/health -> current application context
-
-POST /investigations
-    -> request validation
-    -> Python JSONL log collector
-    -> Prometheus metrics collector
-    -> Actuator context collector
-    -> combined evidence and data gaps
-    -> optional OpenAI analysis
-    -> output and evidence-reference validation
-    -> InvestigationReport
-```
+[Editable draw.io diagram](docs/architecture/architecture.drawio)
 
 The investigator reads the shared log file, queries the Prometheus HTTP API,
 and retrieves Actuator context when an investigation is requested and those
@@ -303,8 +318,8 @@ an actual network delay or explain why a real dependency would be slow.
 - Prometheus starts after the Java health check succeeds.
 - The investigator starts after both Java and Prometheus health checks succeed.
 - The frontend starts after the investigator health check succeeds.
-- LLM_ENABLED is explicitly false in Compose.
-- OPENAI_API_KEY is not passed to the containers.
+- LLM_ENABLED is explicitly false in default Compose.
+- Default Compose does not pass OPENAI_API_KEY to the containers.
 - Docker build contexts include only the files required for each image.
 
 The Python and Java HTTP servers listen on 0.0.0.0 inside their containers.
@@ -345,11 +360,14 @@ configuration. The investigator currently reads only the active file.
 ```text
 Dockerfile                         Python image
 .dockerignore                      Python build context exclusions
-compose.yaml                       Local container demo
+compose.yaml                       Local container demo without model calls
+compose.llm.yaml                   Opt-in live model override
 .github/workflows/ci.yaml           CI checks
 src/ai_incident_investigator/       API, models, collection, and analysis
 frontend/                          React/TypeScript UI, tests, and Nginx image
 tests/                             Python tests
+evals/                             Synthetic scenarios and review rubric
+docs/                              Architecture, evaluation, demo, and release guides
 scripts/check_compose_demo.py       Container log investigation check
 scripts/check_prometheus_demo.py    Prometheus collection check
 scripts/check_investigation_metrics.py  Combined log and metric report check
@@ -570,7 +588,7 @@ Investigation context demo passed: actuator_evidence=2; analysis_status=not_requ
 
 ## Optional LLM analysis
 
-Live analysis is optional. The Compose demo and CI do not use it.
+Live analysis is optional. The default Compose demo and CI do not use it.
 
 For local live analysis, create a private .env file using .env.example as a
 template. Update an existing .env instead of overwriting it.
@@ -594,6 +612,19 @@ uv run --env-file .env --locked uvicorn ai_incident_investigator.main:app --relo
 Python settings read process environment variables. They do not automatically
 load .env; the command above loads it through uv.
 
+To enable real analysis in the container demo, keep `OPENAI_API_KEY` and
+`OPENAI_MODEL` in a private `.env` file and use the explicit override:
+
+```bash
+docker compose -f compose.yaml -f compose.llm.yaml config --quiet
+docker compose -f compose.yaml -f compose.llm.yaml up --build --wait --wait-timeout 180
+```
+
+This passes the key only to the backend container. Model requests can incur API
+charges. The default `compose.yaml` remains usable without a key. Avoid printing
+the fully interpolated Compose configuration because it contains the key.
+See the [live demo steps](docs/demo.md#optional-real-model-demonstration).
+
 When analysis is enabled, a missing or blank key prevents application startup.
 Requests send the investigation request, collected log, metric, and Actuator evidence,
 and data gaps to the configured model.
@@ -605,13 +636,19 @@ and data gaps to the configured model.
 | completed | Analysis passed output and evidence-reference validation. |
 | failed | Analysis failed or was rejected; evidence has been retained. |
 
-Findings and hypotheses must reference existing evidence IDs.
-This checks report structure and references, not the correctness of the reasoning.
+Findings and hypotheses must reference existing evidence IDs. The analyzer
+binds all reference fields to those IDs in the model response schema and validates
+them locally. This checks report structure and references, not the correctness
+of the reasoning.
 Current Actuator snapshots can remain available when no historical logs or
 metrics match. Such snapshots still count as collected evidence; their time
 limitations accompany them in the analysis input.
 
 ## Checks and CI
+
+The CI badge at the top follows push runs on `main`. The workflow covers Python,
+frontend, Java, and Docker Compose checks. Pull requests run the same workflow
+before merge; open the badge to inspect individual job results.
 
 Run Python checks:
 
@@ -752,6 +789,21 @@ Browser traces and failure screenshots are saved under `frontend/test-results/`.
 HTML reports are saved under `frontend/playwright-report/`. CI uploads these
 artifacts for seven days. These generated directories are excluded from Git.
 
+The opt-in live browser check requires the LLM-enabled backend from the
+[optional analysis section](#optional-llm-analysis):
+
+```bash
+ALLOW_LIVE_LLM=true npm --prefix frontend run test:e2e:live
+```
+
+It submits one fresh investigation through the UI and checks telemetry,
+completed analysis, citations, and JSON export. The backend SDK may retry one
+provider request; Playwright retries are disabled. This billable test is excluded
+from ordinary CI and never needs an API key in the frontend. Add
+`RECORD_DEMO=true` for reading pauses in the real browser recording. See the
+[recording procedure and artifacts](docs/demo.md#opt-in-browser-check-and-recording).
+
+
 ## Offline investigation evaluation
 
 Run the synthetic scenario suite:
@@ -773,7 +825,39 @@ contracts; LLM semantic quality is explicitly marked as not evaluated.
 
 See [the evaluation dataset and review rubric](evals/README.md).
 
+## Optional live LLM evaluation
+
+The manual runner evaluates real model outputs on the same four recorded
+scenarios. It validates all offline baselines before attempting model requests,
+preserves original evidence and data gaps, and saves a checkpoint after each
+case. Artifacts include the requested model, prompt and dataset fingerprints,
+optional code revision, durations, reports, and technical checks.
+
+Live evaluation requires an explicit `--allow-live` flag and API credentials.
+It runs separately from ordinary CI, with bounded analysis attempts and SDK
+retries disabled. An empty evidence set skips the model. Existing output files
+are refused; local results remain under the Git-ignored `data/` directory.
+
+Technical passes do not establish the correctness of the model's explanation.
+Generated artifacts remain marked `pending_manual_review`; model quality must
+be reviewed against the evidence and the scenario rubric before release.
+
+See [the setup, commands, and review procedure](docs/llm-evaluation.md).
+
+Real-model checks on 2026-10-16 used `gpt-4.1-mini-2025-04-14`. The final recorded
+run passed four technical scenarios: three model analyses and one correctly
+skipped empty-evidence case. Earlier failed runs informed prompt and evidence-ID
+validation fixes. This is a small synthetic integration check, not a production
+accuracy benchmark. See the [review, limitations, and verification record](docs/validation/2026-10-16.md).
+
 ## Current limits
+
+The real UI check found unsupported model interpretations of scrape availability
+and heap stability. A completed report means the response passed structural and
+reference validation, not that its conclusions are verified. The UI displays a
+review notice; original evidence is available for checking each claim. See the
+[recorded quality findings](docs/validation/2026-10-16.md#fresh-ui-investigation).
+
 
 - Investigations run on request and collect one local JSONL source, optional Prometheus data,
   and optional current context from one configured Actuator target.
@@ -848,10 +932,14 @@ See [the evaluation dataset and review rubric](evals/README.md).
 
 ## Roadmap
 
-The next MVP milestones are:
+The next quality priority is to improve metric interpretation and evaluate unseen
+incidents with repeated runs. The current real UI review documents remaining
+availability, heap, and counter overclaims before expanding autonomous behavior.
 
-1. Validate real model outputs against the prepared scenarios and manual review
-   rubric before release, including repeated runs and prompt/model metadata.
+
+Release preparation and publication are tracked in the
+[release guide](docs/releasing.md). The current scope is a local investigation
+assistant; model output requires an engineer's judgment.
 
 Later work can add centralized log sources, multiple environments, persistent
 investigations, background jobs, and investigations triggered by alerts.

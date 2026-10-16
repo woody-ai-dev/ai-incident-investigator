@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "request": {
+    "service": "order-service",
+    "environment": "local",
+    "start_time": "2026-10-16T14:39:46.000Z",
+    "end_time": "2026-10-16T14:40:28.000Z",
+    "description": "Order 12ba8bdf-3bd4-4289-bc7d-1d7de4514a68 failed with PAYMENT_TIMEOUT. Inspect the recorded failure and explain what is supported by the evidence."
+  },
+  "report": {
+    "analysis_status": "completed",
+    "summary": "The order-service received the order request during the incident window, followed immediately by a simulated payment timeout error. Metrics indicate the service was up and running with consistent JVM heap usage and recorded cumulative HTTP 504 errors for POST /api/v1/orders increasing by one during the window. Current Actuator snapshots show the service was UP after the incident, but these do not inform on the service health or cause during the failure. No distributed tracing is available to analyze the path of the request or external dependencies. The payment timeout was explicitly simulated, so no direct evidence supports a real downstream payment service or network fault during this incident window.",
+    "evidence": [
+      {
+        "id": "log-27",
+        "source": "log",
+        "service": "order-service",
+        "summary": "[INFO] Order request received: orderId=12ba8bdf-3bd4-4289-bc7d-1d7de4514a68, productId=book-1, quantity=2",
+        "reference": "local-jsonl:line:27",
+        "start_time": "2026-10-16T14:40:16.981742Z",
+        "end_time": null
+      },
+      {
+        "id": "log-28",
+        "source": "log",
+        "service": "order-service",
+        "summary": "[ERROR] Payment request timed out (simulated): order=12ba8bdf-3bd4-4289-bc7d-1d7de4514a68",
+        "reference": "local-jsonl:line:28",
+        "start_time": "2026-10-16T14:40:16.982785Z",
+        "end_time": null
+      },
+      {
+        "id": "metric-up",
+        "source": "metric",
+        "service": "order-service",
+        "summary": "Minimum scrape availability across observed targets (0 or 1). Evaluation samples=9, min=1, max=1, last=1; step=5s, lookback=15s. Evaluation times are not scrape times.",
+        "reference": "http://prometheus:9090/api/v1/query_range?query=min%28up%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%7D%29&start=2026-10-16T14%3A39%3A46%2B00%3A00&end=2026-10-16T14%3A40%3A27.999000%2B00%3A00&step=5s&timeout=2s&lookback_delta=15s",
+        "start_time": "2026-10-16T14:39:46Z",
+        "end_time": "2026-10-16T14:40:28Z"
+      },
+      {
+        "id": "metric-jvm-heap",
+        "source": "metric",
+        "service": "order-service",
+        "summary": "Aggregated JVM heap usage in bytes. Evaluation samples=9, min=3.65701e+07, max=4.1813e+07, last=4.1813e+07; step=5s, lookback=15s. Evaluation times are not scrape times.",
+        "reference": "http://prometheus:9090/api/v1/query_range?query=sum%28jvm_memory_used_bytes%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%2Carea%3D%22heap%22%7D%29&start=2026-10-16T14%3A39%3A46%2B00%3A00&end=2026-10-16T14%3A40%3A27.999000%2B00%3A00&step=5s&timeout=2s&lookback_delta=15s",
+        "start_time": "2026-10-16T14:39:46Z",
+        "end_time": "2026-10-16T14:40:28Z"
+      },
+      {
+        "id": "metric-http-504-counter",
+        "source": "metric",
+        "service": "order-service",
+        "summary": "Aggregated cumulative HTTP 504 counter for POST /api/v1/orders; may reset; not the number of errors in the investigation window. Evaluation samples=9, min=7, max=8, last=8; step=5s, lookback=15s. Evaluation times are not scrape times.",
+        "reference": "http://prometheus:9090/api/v1/query_range?query=sum%28http_server_requests_seconds_count%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%2Curi%3D%22%2Fapi%2Fv1%2Forders%22%2Cmethod%3D%22POST%22%2Cstatus%3D%22504%22%7D%29&start=2026-10-16T14%3A39%3A46%2B00%3A00&end=2026-10-16T14%3A40%3A27.999000%2B00%3A00&step=5s&timeout=2s&lookback_delta=15s",
+        "start_time": "2026-10-16T14:39:46Z",
+        "end_time": "2026-10-16T14:40:28Z"
+      },
+      {
+        "id": "actuator-info",
+        "source": "actuator",
+        "service": "order-service",
+        "summary": "Current Actuator info snapshot: name=order-service, environment=local, version=0.1.0; HTTP 200. This is not historical incident data.",
+        "reference": "http://order-service:8081/actuator/info",
+        "start_time": "2026-10-16T14:40:33.119797Z",
+        "end_time": null
+      },
+      {
+        "id": "actuator-health",
+        "source": "actuator",
+        "service": "order-service",
+        "summary": "Current Actuator health snapshot: status=UP; HTTP 200. This is not historical incident data.",
+        "reference": "http://order-service:8081/actuator/health",
+        "start_time": "2026-10-16T14:40:33.121264Z",
+        "end_time": null
+      }
+    ],
+    "findings": [
+      {
+        "statement": "The order-service received the order request for orderId=12ba8bdf-3bd4-4289-bc7d-1d7de4514a68 at 2026-10-16T14:40:16Z approximately.",
+        "evidence_ids": [
+          "log-27"
+        ]
+      },
+      {
+        "statement": "A payment request timed out error was recorded and explicitly marked as simulated for the same order at 2026-10-16T14:40:16Z approximately.",
+        "evidence_ids": [
+          "log-28"
+        ]
+      },
+      {
+        "statement": "The order-service service was up during the incident window as indicated by Prometheus 'up' metric consistently equal to 1.",
+        "evidence_ids": [
+          "metric-up"
+        ]
+      },
+      {
+        "statement": "JVM heap usage was stable during the incident window with minimum about 36.6 MB and maximum about 41.8 MB.",
+        "evidence_ids": [
+          "metric-jvm-heap"
+        ]
+      },
+      {
+        "statement": "Cumulative HTTP 504 error count for POST /api/v1/orders increased by one during the incident window, reflecting a 504 error recorded by the service.",
+        "evidence_ids": [
+          "metric-http-504-counter"
+        ]
+      },
+      {
+        "statement": "Current Actuator info and health endpoints reported the service as UP after the incident window, but these do not reflect service state during the incident.",
+        "evidence_ids": [
+          "actuator-info",
+          "actuator-health"
+        ]
+      }
+    ],
+    "hypotheses": [],
+    "recommended_checks": [
+      {
+        "action": "Verify the configuration and code path that generated the simulated payment timeout error to ensure simulation settings are intended and do not mask real failures.",
+        "reason": "The payment timeout was explicitly simulated; verifying simulation settings avoids mistaking simulated errors for real faults."
+      },
+      {
+        "action": "Search available logs and metrics around the incident window for real payment service calls or network events to confirm whether any genuine downstream issues occurred alongside the simulation.",
+        "reason": "No direct evidence of real downstream or network faults is available; checking other logs or metrics may reveal real failures masked by simulation."
+      },
+      {
+        "action": "Enable distributed tracing and integrate it for future incidents to allow detailed investigation of request flow and dependency failures.",
+        "reason": "Distributed tracing is currently unavailable, limiting diagnostic capabilities for this and future incidents."
+      },
+      {
+        "action": "Configure retention and external collection of historical Actuator snapshots to capture service health status during incident windows for better post-incident analysis.",
+        "reason": "Current Actuator snapshots are after the incident and cannot confirm service state during failures."
+      }
+    ],
+    "missing_data": [
+      "Actuator provides current snapshots, not historical observations. These snapshots do not establish the service state during the incident window.",
+      "At least one Actuator snapshot was observed outside the requested incident window.",
+      "Distributed traces are unavailable: the trace source is not connected."
+    ]
+  }
+}
