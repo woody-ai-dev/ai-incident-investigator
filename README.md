@@ -49,7 +49,7 @@ export the report as JSON.
 
 ## Recorded demo
 
-<video controls src="https://github.com/woody-ai-dev/ai-incident-investigator/releases/download/v0.1.0/mvp-demo.mp4" poster="https://raw.githubusercontent.com/woody-ai-dev/ai-incident-investigator/v0.1.0/docs/assets/mvp-demo-poster.png" width="960"></video>
+https://github.com/woody-ai-dev/ai-incident-investigator/releases/download/v0.1.0/mvp-demo.mp4
 
 [Download the MP4](https://github.com/woody-ai-dev/ai-incident-investigator/releases/download/v0.1.0/mvp-demo.mp4) — 1:22, Full HD 16:9,
 English captions. This edited walkthrough uses real browser footage and an
