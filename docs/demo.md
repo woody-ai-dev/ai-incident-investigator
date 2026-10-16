@@ -9,11 +9,13 @@ anything.
 
 ## Recorded demo
 
-[Edited MP4 with English captions](assets/mvp-demo.mp4) · **1:22 · 1920×1080 · 25 fps** ·
+https://github.com/user-attachments/assets/97f5b7a0-0500-4a67-9961-c598e60c685a
+
+[Download the edited MP4 with English captions](https://github.com/woody-ai-dev/ai-incident-investigator/releases/download/v0.1.0/mvp-demo.mp4) · **1:22 · 1920×1080 · 25 fps** ·
 [caption source](assets/mvp-demo.en.vtt) ·
 [edit timeline and provenance](assets/mvp-demo.edit.json).
 
-[Full captioned browser recording](assets/mvp-demo-full.mp4) · 1:55 ·
+[Download the full captioned browser recording](https://github.com/woody-ai-dev/ai-incident-investigator/raw/refs/tags/v0.1.0/docs/assets/mvp-demo-full.mp4) · 1:55 ·
 [original captions](assets/mvp-demo-full.en.vtt) ·
 [unedited browser export](validation/live-ui-2026-10-16.json).
 

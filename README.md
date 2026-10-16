@@ -1,6 +1,7 @@
 # AI Incident Investigator
 
 [![CI (main)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml/badge.svg?branch=main&event=push)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml?query=branch%3Amain)
+[![Release](https://img.shields.io/github/v/release/woody-ai-dev/ai-incident-investigator)](https://github.com/woody-ai-dev/ai-incident-investigator/releases/latest)
 
 An incident investigation assistant that helps on-call engineers and SREs turn
 service telemetry into evidence-backed reports.
@@ -48,15 +49,15 @@ export the report as JSON.
 
 ## Recorded demo
 
-[![Recorded investigation with a real model](docs/assets/mvp-demo-poster.png)](docs/assets/mvp-demo.mp4)
+https://github.com/user-attachments/assets/97f5b7a0-0500-4a67-9961-c598e60c685a
 
-[Watch or download the MP4](docs/assets/mvp-demo.mp4) — 1:22, Full HD 16:9,
+[Download the MP4](https://github.com/woody-ai-dev/ai-incident-investigator/releases/download/v0.1.0/mvp-demo.mp4) — 1:22, Full HD 16:9,
 English captions. This edited walkthrough uses real browser footage and an
 unedited model response on synthetic telemetry. Idle time and repetitive
 navigation are removed; close-ups and labelled excerpts explain the evidence.
 The captions identify remaining model interpretation errors; this assistant
 requires engineering review of its conclusions. The
-[full captioned recording](docs/assets/mvp-demo-full.mp4) (1:55) is also available.
+[full captioned recording](https://github.com/woody-ai-dev/ai-incident-investigator/raw/refs/tags/v0.1.0/docs/assets/mvp-demo-full.mp4) (1:55) is also available.
 See the
 [actual exported report](docs/validation/live-ui-2026-10-16.json) and
 [validation notes](docs/validation/2026-10-16.md#fresh-ui-investigation).
