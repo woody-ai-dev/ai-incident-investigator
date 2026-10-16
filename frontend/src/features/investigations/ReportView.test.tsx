@@ -346,4 +346,19 @@ describe("investigation report", () => {
     await user.click(screen.getByRole("button", { name: "Data gaps (0)" }));
     expect(screen.getByText("No data gaps reported.")).toBeVisible();
   });
+
+  it("shows interpretation limits before completed model summaries", () => {
+    const { rerender } = render(<ReportView request={request} report={report} />);
+    const note = screen.getByRole("note", { name: "AI interpretation limits" });
+    expect(note).toHaveTextContent("verify claims against source evidence");
+    expect(note).toHaveTextContent("heap summaries alone");
+    expect(
+      note.compareDocumentPosition(screen.getByText(report.summary)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    rerender(
+      <ReportView request={request} report={{ ...report, analysis_status: "not_requested" }} />,
+    );
+    expect(screen.queryByRole("note", { name: "AI interpretation limits" })).toBeNull();
+  });
 });

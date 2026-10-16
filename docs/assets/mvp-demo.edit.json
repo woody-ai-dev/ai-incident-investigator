@@ -1,0 +1,238 @@
+{
+  "duration_seconds": 82,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "frame_rate": 25,
+  "audio": false,
+  "editing": "Idle time and repetitive navigation removed. Browser clips are cropped, enlarged and reordered to follow the finding to its log. Each clip plays at its original rate. Editorial cards are labelled. The model response is not modified.",
+  "capture_date": "2026-10-16",
+  "source_webm_sha256": "8197af77297a948858ca64422eacb6ca9d8579afd3af244d72319a365ad809dc",
+  "public_export": "docs/validation/live-ui-2026-10-16.json",
+  "public_export_sha256": "e2f25a89b82cd2f4f15d19a4072c0d55f57a93e64c6d6b89d402b4ddfd8565cf",
+  "scenes": [
+    {
+      "key": "incident",
+      "duration": 6,
+      "title": "A failed order. One evidence trail.",
+      "step": "01 / THE INCIDENT",
+      "captions": [
+        "Real model response on synthetic demo telemetry.",
+        "Read-only assistance for an engineer reviewing the incident."
+      ],
+      "output_start": 0,
+      "output_end": 6
+    },
+    {
+      "key": "target",
+      "duration": 7,
+      "title": "Choose the service, environment and time window.",
+      "step": "02 / TARGET",
+      "captions": [
+        "The failed order ID keeps the investigation tied to a specific event."
+      ],
+      "source_start": 27.5,
+      "crop_xywh": [
+        294,
+        318,
+        486,
+        485
+      ],
+      "destination_xywh": [
+        120,
+        246,
+        660,
+        659
+      ],
+      "output_start": 6,
+      "output_end": 13
+    },
+    {
+      "key": "sources",
+      "duration": 7,
+      "title": "Bring three sources into one investigation.",
+      "step": "03 / COLLECT",
+      "captions": [
+        "The animation shows request activity and returned evidence counts.",
+        "It does not show live progress for each source."
+      ],
+      "source_start": 34.1,
+      "crop_xywh": [
+        841,
+        262,
+        484,
+        235
+      ],
+      "destination_xywh": [
+        106,
+        320,
+        1162,
+        564
+      ],
+      "output_start": 13,
+      "output_end": 20
+    },
+    {
+      "key": "response",
+      "duration": 8,
+      "title": "Read the answer alongside its evidence.",
+      "step": "04 / INTERPRET",
+      "captions": [
+        "The model response is preserved as returned.",
+        "Its claims still need engineering review."
+      ],
+      "source_start": 50.0,
+      "crop_xywh": [
+        301,
+        165,
+        1017,
+        125
+      ],
+      "destination_xywh": [
+        112,
+        292,
+        1698,
+        209
+      ],
+      "output_start": 20,
+      "output_end": 28
+    },
+    {
+      "key": "finding",
+      "duration": 7,
+      "title": "A finding stays linked to a concrete observation.",
+      "step": "05 / VERIFY",
+      "captions": [
+        "The finding identifies a simulated timeout and cites log-28."
+      ],
+      "source_start": 69.0,
+      "crop_xywh": [
+        304,
+        640,
+        726,
+        112
+      ],
+      "destination_xywh": [
+        120,
+        331,
+        1680,
+        259
+      ],
+      "output_start": 28,
+      "output_end": 35
+    },
+    {
+      "key": "log",
+      "duration": 8,
+      "title": "Match the failure to its exact log record.",
+      "step": "06 / EVIDENCE",
+      "captions": [
+        "The source reference and observation time remain visible.",
+        "This record does not establish a real downstream outage."
+      ],
+      "source_start": 57.8,
+      "crop_xywh": [
+        1068,
+        465,
+        237,
+        274
+      ],
+      "destination_xywh": [
+        1230,
+        247,
+        570,
+        660
+      ],
+      "output_start": 35,
+      "output_end": 43
+    },
+    {
+      "key": "heap-review",
+      "duration": 6,
+      "title": "A valid citation does not guarantee a valid conclusion.",
+      "step": "07 / HUMAN REVIEW",
+      "captions": [
+        "The model called heap usage stable without enough context.",
+        "This limitation stays visible in the demo."
+      ],
+      "source_start": 86.0,
+      "crop_xywh": [
+        311,
+        324,
+        715,
+        70
+      ],
+      "destination_xywh": [
+        120,
+        333,
+        1680,
+        164
+      ],
+      "output_start": 43,
+      "output_end": 49
+    },
+    {
+      "key": "bounds",
+      "duration": 8,
+      "title": "Keep observations separate from stronger claims.",
+      "step": "08 / LIMITS",
+      "captions": [
+        "Engineering review checks support, scope and missing context.",
+        "These are limitations of the captured model interpretation."
+      ],
+      "output_start": 49,
+      "output_end": 57
+    },
+    {
+      "key": "gaps",
+      "duration": 7,
+      "title": "The report makes its blind spots explicit.",
+      "step": "09 / MISSING CONTEXT",
+      "captions": [
+        "Current Actuator snapshots cannot reconstruct historical health.",
+        "Distributed traces are not connected in this MVP."
+      ],
+      "source_start": 97.0,
+      "crop_xywh": [
+        301,
+        484,
+        739,
+        194
+      ],
+      "destination_xywh": [
+        120,
+        310,
+        1680,
+        441
+      ],
+      "output_start": 57,
+      "output_end": 64
+    },
+    {
+      "key": "export",
+      "duration": 12,
+      "title": "Keep the original request and report together.",
+      "step": "10 / EXPORT",
+      "captions": [
+        "The full JSON export is included in the repository.",
+        "Only selected original fields are shown here for readability."
+      ],
+      "output_start": 64,
+      "output_end": 76
+    },
+    {
+      "key": "ending",
+      "duration": 6,
+      "title": "Inspect the evidence. Review the conclusions.",
+      "step": "11 / EXPLORE",
+      "captions": [
+        "Explore the code, architecture, validation results and full recording."
+      ],
+      "output_start": 76,
+      "output_end": 82
+    }
+  ],
+  "original_captioned_recording": "docs/assets/mvp-demo-full.mp4",
+  "original_captioned_recording_sha256": "cb97ddcf690565646269621dc8a4ac36a22852464d1f7e5d517203c47337c063"
+}

@@ -155,6 +155,12 @@ export function ReportView({ report, request }: Props) {
       <span className={styles.status} data-failed={report.analysis_status === "failed"}>
         {analysisLabels[report.analysis_status]}
       </span>
+      {report.analysis_status === "completed" && (
+        <p className={styles.muted} role="note" aria-label="AI interpretation limits">
+          AI-generated interpretation: verify claims against source evidence. Successful scrapes do
+          not prove business health, and heap summaries alone do not establish normal memory usage.
+        </p>
+      )}
       <p className={styles.summary}>{report.summary}</p>
       <nav className={styles.views} aria-label="Report sections">
         {(["evidence", "analysis", "gaps"] as const).map((item) => (

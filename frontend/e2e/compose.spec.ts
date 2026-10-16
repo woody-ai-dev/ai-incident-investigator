@@ -86,3 +86,36 @@ test("Compose timeout evidence reaches the browser through the frontend proxy", 
   await expect(details.getByText("log", { exact: true })).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
+
+test("floating menus work under the production Content Security Policy", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const document = await page.goto("/");
+  const policy = document?.headers()["content-security-policy"] ?? "";
+  expect(policy).toContain("script-src 'self'");
+  expect(policy).not.toContain("'unsafe-inline'");
+  expect(document?.headers()["cache-control"]).toContain("no-store");
+  const nonce = await page.locator('meta[name="style-nonce"]').getAttribute("content");
+  expect(nonce).toMatch(/^[a-f0-9]{32}$/);
+  expect(policy).toContain(`style-src 'self' 'nonce-${nonce}'`);
+
+  for (const label of ["Service", "Environment", "Service"]) {
+    await page.getByRole("combobox", { name: label, exact: true }).click();
+    await expect(page.getByRole("listbox")).toBeVisible();
+    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+    const styleNonces = await page
+      .locator("style")
+      .evaluateAll((styles) => styles.map((style) => (style as HTMLStyleElement).nonce));
+    expect(styleNonces.length).toBeGreaterThanOrEqual(2);
+    expect(styleNonces.every((value) => value === nonce)).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listbox")).toBeHidden();
+    await expect(page.locator("body")).not.toHaveAttribute("data-scroll-locked");
+  }
+  await page.reload();
+  expect(await page.locator('meta[name="style-nonce"]').getAttribute("content")).not.toBe(nonce);
+  expect(errors).toEqual([]);
+});

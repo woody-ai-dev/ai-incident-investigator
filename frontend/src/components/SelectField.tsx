@@ -1,4 +1,5 @@
 import * as Select from "@radix-ui/react-select";
+import { getNonce } from "get-nonce";
 import { useState } from "react";
 import styles from "./SelectField.module.css";
 
@@ -75,7 +76,7 @@ export function SelectField({
                 <path d="m4 10 4-4 4 4" />
               </svg>
             </Select.ScrollUpButton>
-            <Select.Viewport className={styles.viewport}>
+            <Select.Viewport className={styles.viewport} nonce={getNonce() ?? ""}>
               {options.map((option) => (
                 <Select.Item key={option.value} value={option.value} className={styles.item}>
                   <Select.ItemText>{option.label}</Select.ItemText>

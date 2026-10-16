@@ -8,6 +8,7 @@ from ai_incident_investigator.investigations.analysis import Analysis, AnalysisE
 from ai_incident_investigator.investigations.reports import Evidence
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.llm.prompts import SYSTEM_PROMPT
+from ai_incident_investigator.llm.response_schema import analysis_schema
 
 MAX_INPUT_BYTES = 32_000
 
@@ -40,7 +41,7 @@ class OpenAIAnalyzer:
                 model=self.model,
                 instructions=SYSTEM_PROMPT,
                 input=[{"role": "user", "content": payload}],
-                text_format=Analysis,
+                text_format=analysis_schema([item.id for item in evidence]),
                 max_output_tokens=2500,
                 store=False,
             )
@@ -58,4 +59,4 @@ class OpenAIAnalyzer:
         ):
             raise AnalysisError("LLM refused the analysis")
 
-        return response.output_parsed
+        return Analysis.model_validate(response.output_parsed.model_dump())
