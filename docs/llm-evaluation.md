@@ -126,6 +126,73 @@ Before the MVP release, also exercise one live investigation through the UI with
 fresh telemetry and review the displayed report. This fixture-based runner does
 not replace that final integration check.
 
+## Structured review of saved outputs
+
+The offline review CLI records a separate review of an existing
+`LiveEvaluationRun` JSON file. It does not call a model, require an API key,
+change a prompt, or modify the original evaluation artifact.
+
+Create a template from a saved run, substituting your existing run path:
+
+```bash
+uv run --locked python scripts/review_llm.py init \
+  --run data/llm-evaluation/first-run.json \
+  --output data/llm-reviews/first-run.json
+```
+
+The template contains only completed model analyses. Correctly skipped cases
+with no evidence remain technical checks, not semantic model assessments.
+The template starts with an empty `reviewer` and `not_reviewed` decisions.
+The output file must not already exist.
+
+Open the source run and the review side by side. For every completed analysis,
+read its summary, findings, hypotheses, recommendations, evidence, data gaps,
+and scenario-specific review questions. Set `reviewer` and record all four
+criteria, with explanatory `notes` for each case:
+
+| Field | Pass condition |
+| --- | --- |
+| `evidence_support` | Material claims are supported by the cited observations. |
+| `causal_reasoning` | Symptoms, possible causes, and established facts are distinguished. |
+| `data_limitations` | Missing data, sampling limits, and snapshot times constrain conclusions. |
+| `next_checks` | Checks are concrete, relevant, and are not described as already executed. |
+
+Use `pass` only when the criterion is fully met. Use `fail` for a material problem,
+including a partially met criterion; explain which statement needs correction.
+Use `not_reviewed` for work that has not been reviewed. These decisions are
+separate from the historical 0-2 rubric; there is no automatic score conversion.
+
+Check the saved review without writing either file:
+
+```bash
+uv run --locked python scripts/review_llm.py check \
+  --run data/llm-evaluation/first-run.json \
+  --review data/llm-reviews/first-run.json
+```
+
+| Result | Meaning | Exit code |
+| --- | --- | --- |
+| `reviewed_pass` | All recorded criteria pass and the saved technical run is consistent and successful. | 0 |
+| `pending_review` | At least one criterion remains unreviewed. | 1 |
+| `reviewed_fail` | At least one criterion was marked failed. | 1 |
+| `technical_failure` | The source run is unfinished, technically unsuccessful, or internally inconsistent. | 1 |
+| Invalid input | JSON/schema error, source mismatch, or missing/extra/duplicate review cases. | 2 |
+
+A failed criterion takes precedence over an unreviewed one; a technical failure
+blocks approval regardless of the recorded semantic decisions.
+
+The review stores SHA-256 of the exact source bytes. Editing or even reformatting
+the source requires a new review. The fingerprint binds the review to a specific
+artifact; it is not a signature or proof of reviewer identity. Notes must explain
+recorded decisions, and a reviewer is required whenever a decision is recorded.
+
+`reviewed_pass` records a reviewer's judgment about these saved outputs. It is
+not an automatic semantic validator or a production accuracy score. The original
+run keeps its historical `semantic_quality=pending_manual_review` value.
+The current source format does not record the complete planned scenario list,
+so review validation does not establish full dataset coverage. These files stay
+under Git-ignored `data/`; review them separately before publishing any artifacts.
+
 ## Recorded integration check
 
 The first real-model session is summarized in the public

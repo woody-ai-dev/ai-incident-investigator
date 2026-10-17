@@ -12,6 +12,23 @@ service generates a reproducible payment-timeout scenario. Reports combine
 historical log records and metric observations with current application identity
 and health snapshots. Automated remediation is not implemented.
 
+## Tech stack
+
+| Layer | Technologies |
+| --- | --- |
+| Backend | Python 3.12+, FastAPI, Pydantic, HTTPX, Uvicorn |
+| AI analysis | OpenAI Python SDK, Responses API, structured outputs |
+| Frontend | React 19, TypeScript, Vite, Radix UI, Zod |
+| Telemetry | JSONL logs, Prometheus, Spring Boot Actuator, Micrometer |
+| Demo service | Java 25, Spring Boot 4, Maven Wrapper |
+| Testing | pytest, Vitest, Testing Library, Playwright, JUnit |
+| Code quality | Ruff, mypy, ESLint, Prettier |
+| Build and runtime | uv, Docker, Docker Compose, Nginx |
+| CI | GitHub Actions |
+
+Only implemented technologies are listed here. Planned capabilities are described
+in the [roadmap](#roadmap).
+
 ## Current capabilities
 
 - FastAPI endpoints for health checks and investigation requests.
@@ -30,6 +47,7 @@ and health snapshots. Automated remediation is not implemented.
 - Docker images and a four-service Docker Compose demo.
 - Python and frontend tests, Java API tests, and telemetry integration checks.
 - An opt-in LLM evaluation runner with repeatable scenarios, run metadata, and checkpoints.
+- Offline validation of separately recorded manual reviews of saved model outputs.
 
 With analysis disabled, reports contain evidence and data gaps, with empty
 findings and hypotheses. A structurally valid model report does not prove that
