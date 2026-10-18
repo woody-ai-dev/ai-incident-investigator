@@ -1,0 +1,1 @@
+{"timestamp":"2026-10-17T10:02:00Z","service":"order-service","environment":"local","level":"ERROR","message":"Payment request timed out (simulated): order=22222222-2222-4222-8222-222222222222"}

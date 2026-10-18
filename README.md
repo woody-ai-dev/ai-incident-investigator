@@ -844,6 +844,20 @@ contracts; LLM semantic quality is explicitly marked as not evaluated.
 
 See [the evaluation dataset and review rubric](evals/README.md).
 
+An additional [metric interpretation regression suite](evals/metric-boundaries.md)
+covers successful scrapes alongside failed operations, heap summaries without
+baselines, cumulative counters, and incomplete scrape coverage:
+
+```bash
+uv run --locked python scripts/evaluate_investigations.py \
+  --dataset evals/metric-boundaries.json \
+  --output data/metric-boundary-results.json
+```
+
+CI runs both four-case offline suites and uploads their separate results.
+These checks do not evaluate the correctness of LLM explanations. Real model
+outputs require the separate opt-in evaluation and recorded quality review.
+
 ## Optional live LLM evaluation
 
 The manual runner evaluates real model outputs on the same four recorded

@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "scrape-success-business-failure",
+      "description": "Successful scrape observations coexist with a recorded simulated timeout and later Actuator snapshots.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-17T10:00:00Z",
+        "end_time": "2026-10-17T10:05:00Z",
+        "description": "An order failed with PAYMENT_TIMEOUT. Was the service healthy during this incident?"
+      },
+      "log_file": "metric-boundaries.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-up",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Minimum scrape availability across observed targets (0 or 1). Evaluation samples=60, min=1, max=1, last=1; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:scrape-success:up",
+            "start_time": "2026-10-17T10:00:00Z",
+            "end_time": "2026-10-17T10:05:00Z"
+          }
+        ],
+        "issues": []
+      },
+      "actuator": {
+        "evidence": [
+          {
+            "id": "actuator-info",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator info snapshot: name=order-service, environment=local, version=0.1.0; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:scrape-success:actuator-info",
+            "start_time": "2026-10-17T10:15:00Z",
+            "end_time": null
+          },
+          {
+            "id": "actuator-health",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator health snapshot: status=UP; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:scrape-success:actuator-health",
+            "start_time": "2026-10-17T10:15:00Z",
+            "end_time": null
+          }
+        ],
+        "issues": [
+          "Actuator provides current snapshots, not historical observations. These snapshots do not establish the service state during the incident window.",
+          "At least one Actuator snapshot was observed outside the requested incident window."
+        ]
+      },
+      "expected": {
+        "log_evidence": [
+          {
+            "id": "log-1",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[ERROR] Payment request timed out (simulated): order=22222222-2222-4222-8222-222222222222",
+            "reference": "local-jsonl:line:1",
+            "start_time": "2026-10-17T10:02:00Z",
+            "end_time": null
+          }
+        ],
+        "missing_data_contains": [
+          "Actuator provides current snapshots, not historical observations.",
+          "outside the requested incident window",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Does the report retain the simulated timeout while describing up=1 only as successful scraping at observed evaluation points?",
+        "Does it avoid inferring continuous uptime, successful business operations, or historical health from the later UP snapshot?",
+        "Does it leave unsupported causal hypotheses empty rather than using a simulation marker to exclude concurrent real faults?"
+      ]
+    },
+    {
+      "id": "heap-without-baseline",
+      "description": "Only a heap summary is available, without a heap limit, baseline, garbage-collection observations, or error logs.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-17T11:00:00Z",
+        "end_time": "2026-10-17T11:05:00Z",
+        "description": "Could memory pressure explain a reported order failure during this interval?"
+      },
+      "log_file": "metric-boundaries.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-jvm-heap",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Aggregated JVM heap usage in bytes. Evaluation samples=60, min=36000000, max=42000000, last=39000000; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:heap-without-baseline:jvm-heap",
+            "start_time": "2026-10-17T11:00:00Z",
+            "end_time": "2026-10-17T11:05:00Z"
+          }
+        ],
+        "issues": []
+      },
+      "actuator": null,
+      "expected": {
+        "log_evidence": [],
+        "missing_data_contains": [
+          "no matching records were found",
+          "Actuator context is unavailable: the Actuator source is not connected.",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Does the report describe the observed heap values without calling them normal, stable, healthy, or proof that memory pressure was absent?",
+        "Does it avoid treating heap min/max/last as proof of a memory leak, OOM, or cause of the reported order failure?",
+        "Does it identify useful missing context such as heap limits, GC observations, historical baselines, and retained error logs?"
+      ]
+    },
+    {
+      "id": "counter-drop-without-raw-series",
+      "description": "An aggregated cumulative counter ends below its observed maximum; raw points and per-instance series are unavailable.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-17T12:00:00Z",
+        "end_time": "2026-10-17T12:05:00Z",
+        "description": "How many HTTP 504 failures occurred during this interval? Did a process restart?"
+      },
+      "log_file": "metric-boundaries.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-http-504-counter",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Aggregated cumulative HTTP 504 counter for POST /api/v1/orders; may reset; not the number of errors in the investigation window. Evaluation samples=60, min=0, max=18, last=2; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:counter-drop:http-504-counter",
+            "start_time": "2026-10-17T12:00:00Z",
+            "end_time": "2026-10-17T12:05:00Z"
+          }
+        ],
+        "issues": []
+      },
+      "actuator": null,
+      "expected": {
+        "log_evidence": [],
+        "missing_data_contains": [
+          "no matching records were found",
+          "Actuator context is unavailable: the Actuator source is not connected.",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Does the report avoid giving an exact per-window error count from the cumulative min/max/last summary?",
+        "Does it avoid asserting a process restart, a number of restarts, or an individual failed order from the aggregate alone?",
+        "If resets or changing target membership are suggested, are they explicitly unconfirmed and tied to concrete additional checks?"
+      ]
+    },
+    {
+      "id": "sparse-scrapes-with-failure",
+      "description": "Only two of sixty expected scrape evaluation samples are available; one observation is zero and the last is one.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-17T13:00:00Z",
+        "end_time": "2026-10-17T13:05:00Z",
+        "description": "Was the service down throughout the incident, and has it recovered?"
+      },
+      "log_file": "metric-boundaries.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-up",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Minimum scrape availability across observed targets (0 or 1). Evaluation samples=2, min=0, max=1, last=1; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:sparse-scrapes:up",
+            "start_time": "2026-10-17T13:00:00Z",
+            "end_time": "2026-10-17T13:05:00Z"
+          }
+        ],
+        "issues": [
+          "Prometheus up returned 2 of 60 expected evaluation samples; coverage is incomplete."
+        ]
+      },
+      "actuator": null,
+      "expected": {
+        "log_evidence": [],
+        "missing_data_contains": [
+          "no matching records were found",
+          "coverage is incomplete",
+          "Actuator context is unavailable: the Actuator source is not connected.",
+          "Distributed traces are unavailable"
+        ]
+      },
+      "review_questions": [
+        "Does the report acknowledge a failed scrape observation rather than treating the entire series as successful?",
+        "Does it avoid inferring continuous downtime, an outage duration, business recovery, or the state of unobserved instances?",
+        "Does it explain that last=1 and two sparse evaluation samples leave the intervening period and business-operation status unknown?"
+      ]
+    }
+  ]
+}
