@@ -46,12 +46,21 @@ jobs:
       - name: Evaluate offline investigation scenarios
         run: uv run --locked python scripts/evaluate_investigations.py
 
+      - name: Evaluate offline metric-boundary scenarios
+        if: ${{ !cancelled() }}
+        run: >-
+          uv run --locked python scripts/evaluate_investigations.py
+          --dataset evals/metric-boundaries.json
+          --output data/metric-boundary-results.json
+
       - name: Upload evaluation results
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: offline-evaluation-results
-          path: data/evaluation-results.json
+          path: |
+            data/evaluation-results.json
+            data/metric-boundary-results.json
           if-no-files-found: ignore
           retention-days: 7
 

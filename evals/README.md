@@ -72,3 +72,8 @@ Use the following rubric for each actual analysis:
 Do not interpret 4/4 offline pipeline passes as 100% LLM accuracy. A separate
 real-model review has been recorded; its small synthetic dataset and limited
 repetitions do not establish production accuracy or reliability.
+
+An additional [metric interpretation regression suite](metric-boundaries.md)
+covers scrape success versus business failure, heap summaries without baselines,
+cumulative counters, and incomplete scrape coverage. Its offline results also
+check pipeline contracts rather than natural-language correctness.
