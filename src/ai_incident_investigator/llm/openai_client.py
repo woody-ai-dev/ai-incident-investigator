@@ -5,6 +5,7 @@ from openai import APIError, OpenAI
 from pydantic import ValidationError
 
 from ai_incident_investigator.investigations.analysis import Analysis, AnalysisError
+from ai_incident_investigator.investigations.evidence_context import build_evidence_context
 from ai_incident_investigator.investigations.reports import Evidence
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.llm.prompts import SYSTEM_PROMPT
@@ -28,6 +29,10 @@ class OpenAIAnalyzer:
             {
                 "request": request.model_dump(mode="json"),
                 "evidence": [item.model_dump(mode="json") for item in evidence],
+                "evidence_context": [
+                    item.model_dump(mode="json", exclude_none=True)
+                    for item in build_evidence_context(request, evidence)
+                ],
                 "missing_data": list(missing_data),
             },
             ensure_ascii=False,

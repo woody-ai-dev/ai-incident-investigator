@@ -652,7 +652,7 @@ and data gaps to the configured model.
 | --- | --- |
 | not_requested | LLM analysis is disabled. |
 | skipped | Analysis is enabled, but no evidence was collected from the configured sources. |
-| completed | Analysis passed output and evidence-reference validation. |
+| completed | Analysis passed output, evidence-reference, and temporal-support validation. |
 | failed | Analysis failed or was rejected; evidence has been retained. |
 
 Findings and hypotheses must reference existing evidence IDs. The analyzer
@@ -662,6 +662,18 @@ of the reasoning.
 Current Actuator snapshots can remain available when no historical logs or
 metrics match. Such snapshots still count as collected evidence; their time
 limitations accompany them in the analysis input.
+
+Input-only temporal metadata describes each observation relative to the incident
+window. The service rejects a hypothesis supported only by Actuator point
+snapshots outside that window and retains the evidence in a fallback report.
+Passing this narrow rule does not establish that the reasoning is correct.
+See [analysis evidence boundaries](docs/analysis-boundaries.md).
+
+Known Prometheus observations also carry input-only metric interpretation metadata
+from a shared producer catalogue. It distinguishes scrape observations, heap
+summaries, and cumulative counters without inferring meaning from free text.
+The [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md)
+includes the observed improvements and a remaining scrape-timing error.
 
 ## Checks and CI
 

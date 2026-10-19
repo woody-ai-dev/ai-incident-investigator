@@ -7,6 +7,12 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field, FiniteFloat
 
+from ai_incident_investigator.investigations.metric_catalog import (
+    HTTP_504_COUNTER,
+    JVM_HEAP_USAGE,
+    SCRAPE_SUCCESS,
+    MetricDefinition,
+)
 from ai_incident_investigator.investigations.reports import Evidence, EvidenceSource
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.sources.metrics import MetricsCollection
@@ -35,9 +41,16 @@ class RangeResponse(BaseModel):
 
 @dataclass(frozen=True)
 class MetricQuery:
-    key: str
+    definition: MetricDefinition
     expression: str
-    description: str
+
+    @property
+    def key(self) -> str:
+        return self.definition.key
+
+    @property
+    def description(self) -> str:
+        return self.definition.description
 
 
 def build_queries(request: InvestigationRequest) -> tuple[MetricQuery, ...]:
@@ -48,24 +61,18 @@ def build_queries(request: InvestigationRequest) -> tuple[MetricQuery, ...]:
 
     return (
         MetricQuery(
-            key="up",
+            definition=SCRAPE_SUCCESS,
             expression=f"min(up{{{labels}}})",
-            description="Minimum scrape availability across observed targets (0 or 1)",
         ),
         MetricQuery(
-            key="jvm-heap",
+            definition=JVM_HEAP_USAGE,
             expression=f'sum(jvm_memory_used_bytes{{{labels},area="heap"}})',
-            description="Aggregated JVM heap usage in bytes",
         ),
         MetricQuery(
-            key="http-504-counter",
+            definition=HTTP_504_COUNTER,
             expression=(
                 f"sum(http_server_requests_seconds_count{{{labels},"
                 'uri="/api/v1/orders",method="POST",status="504"})'
-            ),
-            description=(
-                "Aggregated cumulative HTTP 504 counter for POST /api/v1/orders; "
-                "may reset; not the number of errors in the investigation window"
             ),
         ),
     )
@@ -123,7 +130,7 @@ class PrometheusCollector:
 
                 result.evidence.append(
                     Evidence(
-                        id=f"metric-{query.key}",
+                        id=query.definition.evidence_id,
                         source=EvidenceSource.METRIC,
                         service=request.service,
                         summary=(
@@ -191,7 +198,7 @@ class PrometheusCollector:
                 raise ValueError("Metric evaluation timestamps must increase")
             if not math.isfinite(value) or value < 0:
                 raise ValueError("Metric value must be finite and non-negative")
-            if key == "up" and value not in (0.0, 1.0):
+            if key == SCRAPE_SUCCESS.key and value not in (0.0, 1.0):
                 raise ValueError("Scrape availability must be zero or one")
 
             previous_timestamp = timestamp

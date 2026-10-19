@@ -4,6 +4,9 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ai_incident_investigator.investigations.analysis import AnalysisError, Analyzer
+from ai_incident_investigator.investigations.evidence_context import (
+    validate_hypothesis_time_support,
+)
 from ai_incident_investigator.investigations.reports import (
     InvestigationReport,
     RecommendedCheck,
@@ -96,9 +99,11 @@ def investigate(
             report.missing_data,
         )
 
-        return InvestigationReport.model_validate(
+        candidate = InvestigationReport.model_validate(
             report.model_dump() | analysis.model_dump() | {"analysis_status": "completed"}
         )
+        validate_hypothesis_time_support(request, candidate)
+        return candidate
     except (AnalysisError, ValidationError) as exc:
         logger.warning(
             "Investigation analysis failed: %s",
