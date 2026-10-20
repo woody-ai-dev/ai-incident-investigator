@@ -7,6 +7,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from ai_incident_investigator import dependencies
 from ai_incident_investigator.evaluation.dataset import (
     Dataset,
     Scenario,
@@ -22,7 +23,7 @@ from ai_incident_investigator.evaluation.runner import (
     run_scenario,
 )
 from ai_incident_investigator.investigations.reports import EvidenceSource
-from ai_incident_investigator.llm import dependencies, openai_client
+from ai_incident_investigator.llm import openai_client
 from scripts import evaluate_investigations as cli
 
 DATASET_PATH = Path(__file__).resolve().parents[1] / "evals" / "scenarios.json"

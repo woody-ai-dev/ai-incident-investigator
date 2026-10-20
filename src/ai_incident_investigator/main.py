@@ -1,27 +1,54 @@
+from asyncio import to_thread
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy import Engine
 
+from ai_incident_investigator.investigations.ports import StorageError
 from ai_incident_investigator.investigations.router import router as investigations_router
 from ai_incident_investigator.settings import get_settings
+from ai_incident_investigator.storage.database import create_database_engine
+from ai_incident_investigator.storage.repository import SqlAlchemyInvestigationStore
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    get_settings()
-    yield
+    settings = get_settings()
+    engine: Engine | None = None
+    app.state.investigation_store = None
+
+    try:
+        if settings.database_url is not None:
+            engine = create_database_engine(settings.database_url)
+            store = SqlAlchemyInvestigationStore(engine)
+            try:
+                await to_thread(store.check_ready)
+            except StorageError:
+                raise RuntimeError(
+                    "Investigation database is unavailable; check connectivity and apply migrations"
+                ) from None
+            app.state.investigation_store = store
+        yield
+    finally:
+        app.state.investigation_store = None
+        if engine is not None:
+            await to_thread(engine.dispose)
 
 
-app = FastAPI(
-    title="AI Incident Investigator",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-app.include_router(investigations_router)
-
-
-@app.get("/health", tags=["health"])
 async def health() -> dict[str, str]:
     return {"status": "UP"}
+
+
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title="AI Incident Investigator",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    application.include_router(investigations_router)
+    application.add_api_route("/health", health, methods=["GET"], tags=["health"])
+    return application
+
+
+app = create_app()

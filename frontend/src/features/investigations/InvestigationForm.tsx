@@ -4,7 +4,7 @@ import type { InvestigationRequest } from "../../api/contracts";
 import { SelectField } from "../../components/SelectField";
 import { defaultValues, recentWindow, validateForm, type FormValues } from "./form";
 import { INVESTIGATION_TARGETS } from "./targets";
-import styles from "./Investigation.module.css";
+import styles from "./InvestigationForm.module.css";
 
 type Props = {
   phase: "idle" | "loading" | "success" | "error";

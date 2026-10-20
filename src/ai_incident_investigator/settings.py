@@ -11,6 +11,20 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+
+
+def validate_database_url(value: SecretStr) -> SecretStr:
+    try:
+        url = make_url(value.get_secret_value())
+    except (ArgumentError, ValueError):
+        raise ValueError("DATABASE_URL must be a valid PostgreSQL URL") from None
+
+    if url.drivername != "postgresql+psycopg" or not url.host or not url.database:
+        raise ValueError("DATABASE_URL must use postgresql+psycopg and include host and database")
+
+    return value
 
 
 class ActuatorTarget(BaseModel):
@@ -45,6 +59,7 @@ class Settings(BaseModel):
     log_path: Path = Path("data/logs.jsonl")
     prometheus_url: HttpUrl | None = None
     actuator_target: ActuatorTarget | None = None
+    database_url: SecretStr | None = Field(default=None, repr=False, exclude=True)
 
     llm_enabled: bool = False
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
@@ -52,6 +67,11 @@ class Settings(BaseModel):
         default="gpt-4.1-mini-2025-04-14",
         min_length=1,
     )
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_storage_url(cls, value: SecretStr | None) -> SecretStr | None:
+        return validate_database_url(value) if value is not None else None
 
     @field_validator("prometheus_url")
     @classmethod
@@ -79,6 +99,7 @@ class Settings(BaseModel):
 
 def get_settings() -> Settings:
     raw_key = os.environ.get("OPENAI_API_KEY")
+    raw_database_url = os.environ.get("DATABASE_URL")
 
     actuator_target = {
         "base_url": os.environ.get("ACTUATOR_URL") or None,
@@ -93,6 +114,7 @@ def get_settings() -> Settings:
                 "data/logs.jsonl",
             ),
             "prometheus_url": os.environ.get("PROMETHEUS_URL") or None,
+            "database_url": SecretStr(raw_database_url) if raw_database_url else None,
             "actuator_target": (actuator_target if any(actuator_target.values()) else None),
             "llm_enabled": os.environ.get("LLM_ENABLED", "false"),
             "openai_api_key": SecretStr(raw_key) if raw_key else None,

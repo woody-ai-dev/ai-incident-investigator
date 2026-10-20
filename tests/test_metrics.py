@@ -5,16 +5,16 @@ from pathlib import Path
 
 import httpx
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from ai_incident_investigator.dependencies import get_metrics_collector
 from ai_incident_investigator.investigations.reports import (
     Evidence,
     EvidenceSource,
     InvestigationReport,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
-from ai_incident_investigator.main import app
-from ai_incident_investigator.sources.dependencies import get_metrics_collector
 from ai_incident_investigator.sources.metrics import MetricsCollection
 from ai_incident_investigator.sources.prometheus import PrometheusCollector
 
@@ -313,6 +313,7 @@ def test_query_bounds_respect_millisecond_precision(
 
 
 def test_api_combines_logs_with_metric_evidence_and_gaps(
+    app: FastAPI,
     request_model: InvestigationRequest,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
