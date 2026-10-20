@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import type { InvestigationReport } from "../api/contracts";
+import type { InvestigationReport } from "../../api/contracts";
 import styles from "./SourceFlow.module.css";
 
 interface SourceFlowProps {

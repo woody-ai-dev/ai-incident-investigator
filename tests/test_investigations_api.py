@@ -3,14 +3,14 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ai_incident_investigator.investigations.reports import InvestigationReport
-from ai_incident_investigator.main import app
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def client(app: FastAPI, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("INVESTIGATOR_LOG_PATH", str(tmp_path / "missing.jsonl"))
     with TestClient(app) as test_client:
         yield test_client

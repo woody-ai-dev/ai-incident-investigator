@@ -7,6 +7,9 @@
 !README.md
 !src/
 !src/**
+!alembic.ini
+!migrations/
+!migrations/**
 
 **/__pycache__/
 **/*.py[cod]

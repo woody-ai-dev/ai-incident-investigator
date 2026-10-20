@@ -7,6 +7,7 @@ import httpx
 import httpx2
 import pytest
 
+from ai_incident_investigator import dependencies
 from ai_incident_investigator.evaluation.dataset import Dataset, load_dataset
 from ai_incident_investigator.evaluation.live import run_live_evaluation
 from ai_incident_investigator.evaluation.review import (
@@ -22,7 +23,7 @@ from ai_incident_investigator.investigations.reports import (
     RecommendedCheck,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
-from ai_incident_investigator.llm import dependencies, openai_client
+from ai_incident_investigator.llm import openai_client
 from scripts import evaluate_investigations as cli
 
 DATASET_PATH = Path(__file__).resolve().parents[1] / "evals" / "metric-boundaries.json"

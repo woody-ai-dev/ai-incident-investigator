@@ -1,9 +1,8 @@
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from ai_incident_investigator.main import app
 
-
-def test_health_returns_up() -> None:
+def test_health_returns_up(app: FastAPI) -> None:
     with TestClient(app) as client:
         response = client.get("/health")
 

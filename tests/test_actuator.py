@@ -5,25 +5,25 @@ from pathlib import Path
 
 import httpx
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from ai_incident_investigator.dependencies import (
+    get_actuator_collector,
+    get_metrics_collector,
+)
 from ai_incident_investigator.investigations.reports import (
     Evidence,
     EvidenceSource,
     InvestigationReport,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
-from ai_incident_investigator.main import app
 from ai_incident_investigator.settings import ActuatorTarget
 from ai_incident_investigator.sources.actuator import (
     MAX_RESPONSE_BYTES,
     HttpActuatorCollector,
 )
 from ai_incident_investigator.sources.context import ActuatorCollection
-from ai_incident_investigator.sources.dependencies import (
-    get_actuator_collector,
-    get_metrics_collector,
-)
 from ai_incident_investigator.sources.metrics import MetricsCollection
 
 BASE_URL = "http://order-service:8081/actuator/"
@@ -297,6 +297,7 @@ class FakeMetricsCollector:
 
 @pytest.mark.parametrize("actuator_available", [True, False])
 def test_api_preserves_other_sources_when_actuator_is_unavailable(
+    app: FastAPI,
     request_model: InvestigationRequest,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

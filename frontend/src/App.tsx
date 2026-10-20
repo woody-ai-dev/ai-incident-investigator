@@ -1,5 +1,5 @@
 import { Logo } from "./components/Logo";
-import { SourceFlow } from "./components/SourceFlow";
+import { SourceFlow } from "./features/investigations/SourceFlow";
 import { InvestigationForm } from "./features/investigations/InvestigationForm";
 import { ReportView } from "./features/investigations/ReportView";
 import { useInvestigation } from "./features/investigations/useInvestigation";

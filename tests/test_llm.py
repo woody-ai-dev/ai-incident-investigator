@@ -5,17 +5,17 @@ from pathlib import Path
 
 import httpx2 as httpx
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openai import OpenAI
 from pydantic import ValidationError
 
+from ai_incident_investigator.dependencies import get_analyzer
 from ai_incident_investigator.investigations.analysis import Analysis, AnalysisError
 from ai_incident_investigator.investigations.reports import Evidence, InvestigationReport
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.investigations.service import investigate
-from ai_incident_investigator.llm.dependencies import get_analyzer
 from ai_incident_investigator.llm.openai_client import OpenAIAnalyzer
-from ai_incident_investigator.main import app
 from ai_incident_investigator.settings import get_settings
 
 
@@ -267,6 +267,7 @@ def test_enabled_llm_requires_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_api_uses_injected_analyzer(
+    app: FastAPI,
     request_model: InvestigationRequest,
     log_path: Path,
     analysis: Analysis,

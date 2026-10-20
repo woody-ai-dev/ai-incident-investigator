@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Evidence, InvestigationReport, InvestigationRequest } from "../../api/contracts";
-import styles from "./Investigation.module.css";
+import styles from "./ReportView.module.css";
 
 const analysisLabels = {
   not_requested: "AI analysis disabled",
