@@ -38,9 +38,19 @@ function exportReport(request: InvestigationRequest, report: InvestigationReport
 }
 
 type Props = { report: InvestigationReport; request: InvestigationRequest };
+type ReportSection = "evidence" | "analysis" | "gaps";
 
 export function ReportView({ report, request }: Props) {
-  const [view, setView] = useState<"evidence" | "analysis" | "gaps">("evidence");
+  const [section, setSection] = useState<{
+    report: InvestigationReport;
+    view: ReportSection;
+  } | null>(null);
+  const view =
+    section?.report === report
+      ? section.view
+      : report.analysis_status === "completed"
+        ? "analysis"
+        : "evidence";
   const [selection, setSelection] = useState<{
     report: InvestigationReport;
     id: string;
@@ -162,7 +172,10 @@ export function ReportView({ report, request }: Props) {
           not prove business health, and heap summaries alone do not establish normal memory usage.
         </p>
       )}
-      <p className={styles.summary}>{report.summary}</p>
+      <section className={styles.summary} aria-label="Summary">
+        <h3>Summary</h3>
+        <p>{report.summary}</p>
+      </section>
       <LLMUsageSummary usage={report.llm_usage} />
       <nav className={styles.views} aria-label="Report sections">
         {(["evidence", "analysis", "gaps"] as const).map((item) => (
@@ -170,7 +183,7 @@ export function ReportView({ report, request }: Props) {
             type="button"
             key={item}
             aria-pressed={view === item}
-            onClick={() => setView(item)}
+            onClick={() => setSection({ report, view: item })}
           >
             {item === "gaps"
               ? `Data gaps (${report.missing_data.length})`
@@ -208,18 +221,18 @@ export function ReportView({ report, request }: Props) {
                   No findings returned. {analysisLabels[report.analysis_status]}.
                 </p>
               )}
-              <h3>Hypotheses</h3>
-              {report.hypotheses.length ? (
-                report.hypotheses.map((item, index) => (
-                  <article key={index} className={styles.conclusion}>
-                    <p>{item.statement}</p>
-                    {references(item.supporting_evidence_ids, "Supports")}
-                    {item.contradicting_evidence_ids.length > 0 &&
-                      references(item.contradicting_evidence_ids, "Contradicts")}
-                  </article>
-                ))
-              ) : (
-                <p className={styles.empty}>No hypotheses returned.</p>
+              {report.hypotheses.length > 0 && (
+                <>
+                  <h3>Hypotheses</h3>
+                  {report.hypotheses.map((item, index) => (
+                    <article key={index} className={styles.conclusion}>
+                      <p>{item.statement}</p>
+                      {references(item.supporting_evidence_ids, "Supports")}
+                      {item.contradicting_evidence_ids.length > 0 &&
+                        references(item.contradicting_evidence_ids, "Contradicts")}
+                    </article>
+                  ))}
+                </>
               )}
               <h3>Recommended checks</h3>
               {report.recommended_checks.length ? (

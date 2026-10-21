@@ -98,6 +98,7 @@ test("a fresh incident is analyzed by a real model through the browser", async (
   }
   await view.scrollIntoViewIfNeeded();
   await pause(8_000);
+  await view.getByRole("button", { name: /^Evidence \(/ }).click();
   await view.getByRole("button").filter({ hasText: timeout.summary }).click();
   const details = view.getByRole("complementary", { name: "Evidence details" });
   await expect(details.getByText(timeout.reference, { exact: true })).toBeVisible();

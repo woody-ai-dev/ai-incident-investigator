@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "service-restart-summary",
+      "description": "Synthetic service lifecycle logs, heap and scrape summaries, incomplete metric coverage and later Actuator snapshots.",
+      "request": {
+        "service": "order-service",
+        "environment": "local",
+        "start_time": "2026-10-21T19:17:00Z",
+        "end_time": "2026-10-21T19:21:00Z",
+        "description": "Investigate the reported order-service incident. Establish what the sources show and what remains unknown."
+      },
+      "log_file": "restart.jsonl",
+      "metrics": {
+        "evidence": [
+          {
+            "id": "metric-up",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Minimum scrape availability across observed targets (0 or 1). Evaluation samples=27, min=1, max=1, last=1; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:restart:up",
+            "start_time": "2026-10-21T19:17:00Z",
+            "end_time": "2026-10-21T19:21:00Z"
+          },
+          {
+            "id": "metric-jvm-heap",
+            "source": "metric",
+            "service": "order-service",
+            "summary": "Aggregated JVM heap usage in bytes. Evaluation samples=27, min=29600000, max=45300000, last=30400000; step=5s, lookback=15s. Evaluation times are not scrape times.",
+            "reference": "fixture:synthetic:restart:jvm-heap",
+            "start_time": "2026-10-21T19:17:00Z",
+            "end_time": "2026-10-21T19:21:00Z"
+          }
+        ],
+        "issues": [
+          "Prometheus metrics have incomplete coverage of the requested incident window."
+        ]
+      },
+      "actuator": {
+        "evidence": [
+          {
+            "id": "actuator-info",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator info snapshot: name=order-service, environment=local, version=0.1.0; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:restart:actuator-info",
+            "start_time": "2026-10-21T19:22:00Z",
+            "end_time": null
+          },
+          {
+            "id": "actuator-health",
+            "source": "actuator",
+            "service": "order-service",
+            "summary": "Current Actuator health snapshot: status=UP; HTTP 200. This is not historical incident data.",
+            "reference": "fixture:synthetic:restart:actuator-health",
+            "start_time": "2026-10-21T19:22:00Z",
+            "end_time": null
+          }
+        ],
+        "issues": [
+          "Actuator provides current snapshots, not historical observations. These snapshots do not establish the service state during the incident window.",
+          "At least one Actuator snapshot was observed outside the requested incident window."
+        ]
+      },
+      "expected": {
+        "log_evidence": [
+          {
+            "id": "log-1",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Started OrderService; Tomcat initialized on port 8081.",
+            "reference": "local-jsonl:line:1",
+            "start_time": "2026-10-21T19:17:52Z",
+            "end_time": null
+          },
+          {
+            "id": "log-2",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Commencing graceful shutdown. Waiting for active requests to complete.",
+            "reference": "local-jsonl:line:2",
+            "start_time": "2026-10-21T19:20:05Z",
+            "end_time": null
+          },
+          {
+            "id": "log-3",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Graceful shutdown complete.",
+            "reference": "local-jsonl:line:3",
+            "start_time": "2026-10-21T19:20:06Z",
+            "end_time": null
+          },
+          {
+            "id": "log-4",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Starting OrderService with Java 25.",
+            "reference": "local-jsonl:line:4",
+            "start_time": "2026-10-21T19:20:08Z",
+            "end_time": null
+          },
+          {
+            "id": "log-5",
+            "source": "log",
+            "service": "order-service",
+            "summary": "[INFO] Started OrderService; Tomcat started on port 8081.",
+            "reference": "local-jsonl:line:5",
+            "start_time": "2026-10-21T19:20:16Z",
+            "end_time": null
+          }
+        ],
+        "missing_data_contains": [
+          "Actuator provides current snapshots, not historical observations.",
+          "outside the requested incident window",
+          "Distributed traces are unavailable",
+          "incomplete coverage"
+        ]
+      },
+      "review_questions": [
+        "Does the summary use one or two short sentences, at most 60 words, naming service logs as support for the shutdown and fresh startup?",
+        "Does it state that the cause and request impact remain unknown without treating the lifecycle sequence as a proven incident cause?",
+        "Are detailed lifecycle timestamps and heap values in evidence-backed findings rather than repeated in the summary?",
+        "Are successful scrape evaluations kept separate from continuous availability, and later Actuator snapshots kept separate from historical state?",
+        "Do the recommended checks identify retained incident-era lifecycle/deployment records or request logs without claiming checks were executed?"
+      ]
+    }
+  ]
+}

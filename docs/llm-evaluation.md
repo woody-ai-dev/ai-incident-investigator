@@ -59,8 +59,9 @@ adapter may reject an attempt locally before making an HTTP request.
 
 The requested model, prompt SHA-256, dataset/fixture SHA-256, optional code
 revision, UTC run timestamp, case duration, reports, checks, and review questions
-are retained. Token usage and monetary cost are not measured by this version;
-the current analyzer interface returns only `Analysis`.
+are retained. Reports include provider-reported token usage and estimated cost when
+available. Missing usage or unknown pricing remain unknown; these artifacts are not
+a provider invoice reconciliation.
 
 Output defaults to a new UUID-named file under `data/llm-evaluation/` when
 `--output` is omitted. Existing files, including datasets and fixtures, are

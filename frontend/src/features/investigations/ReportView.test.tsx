@@ -147,8 +147,10 @@ describe("investigation report", () => {
     expect(revokeUrl).toHaveBeenCalledWith("blob:report-test");
   });
 
-  it("displays UTC and separates sorted historical evidence from current Actuator snapshots", () => {
+  it("displays UTC and separates sorted historical evidence from current Actuator snapshots", async () => {
+    const user = userEvent.setup();
     render(<ReportView request={request} report={report} />);
+    await user.click(screen.getByRole("button", { name: "Evidence (4)" }));
     expect(screen.getByText(/14 Oct 2026, 10:00:00 → 14 Oct 2026, 10:15:00 UTC/)).toBeVisible();
     const historical = screen.getByRole("heading", {
       name: "Historical observations",
@@ -182,6 +184,7 @@ describe("investigation report", () => {
     };
     const user = userEvent.setup();
     render(<ReportView request={preciseRequest} report={preciseReport} />);
+    await user.click(screen.getByRole("button", { name: "Evidence (4)" }));
     expect(
       screen.getByText(/14 Oct 2026, 10:00:01\.123456 → 14 Oct 2026, 10:15:00 UTC/),
     ).toBeVisible();
@@ -236,6 +239,7 @@ describe("investigation report", () => {
     const panel = screen.getByRole("complementary", { name: "Evidence details" });
     panelBounds(panel, 800, 1200);
     expect(scrollMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Evidence (4)" }));
     const evidence = screen.getByRole("button", { name: /Payment request timed out/ });
     await user.click(evidence);
     expect(evidence).toHaveAttribute("aria-controls", panel.id);
@@ -254,6 +258,7 @@ describe("investigation report", () => {
     render(<ReportView request={request} report={report} />);
     const panel = screen.getByRole("complementary", { name: "Evidence details" });
     panelBounds(panel, 800, 1200);
+    await user.click(screen.getByRole("button", { name: "Evidence (4)" }));
     const evidence = screen.getByRole("button", { name: /Payment request timed out/ });
     await user.click(evidence);
     expect(scrollMock).toHaveBeenCalledWith({ behavior: "auto", block: "nearest" });
@@ -312,7 +317,7 @@ describe("investigation report", () => {
     expect(screen.getAllByText("No observations returned.")).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "Analysis & checks" }));
     expect(screen.getByText(`No findings returned. ${label}.`)).toBeVisible();
-    expect(screen.getByText("No hypotheses returned.")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Hypotheses" })).not.toBeInTheDocument();
     expect(screen.getByText("No recommended checks returned.")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Data gaps (1)" }));
     expect(
@@ -334,6 +339,7 @@ describe("investigation report", () => {
     const { container } = render(<ReportView request={request} report={unsafe} />);
     expect(screen.getByText(raw)).toBeVisible();
     expect(container.querySelector("img")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Evidence (1)" }));
     await user.click(screen.getByRole("button", { name: /Raw source observation/ }));
     const panel = screen.getByRole("complementary", { name: "Evidence details" });
     expect(within(panel).getByText(raw)).toBeVisible();
@@ -360,5 +366,48 @@ describe("investigation report", () => {
       <ReportView request={request} report={{ ...report, analysis_status: "not_requested" }} />,
     );
     expect(screen.queryByRole("note", { name: "AI interpretation limits" })).toBeNull();
+  });
+
+  it("opens completed analysis with a named summary, findings and next checks", () => {
+    render(<ReportView request={request} report={{ ...report, hypotheses: [] }} />);
+    const summary = screen.getByRole("region", { name: "Summary" });
+    expect(within(summary).getByRole("heading", { name: "Summary" })).toBeVisible();
+    expect(within(summary).getByText(report.summary)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Analysis & checks" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("Checkout recorded a payment timeout.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "log-timeout" })).toBeVisible();
+    expect(screen.getByText("Inspect payment latency.")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Hypotheses" })).not.toBeInTheDocument();
+  });
+
+  it("resets the default section for a new report while preserving manual navigation in the same report", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ReportView request={request} report={report} />);
+    await user.click(screen.getByRole("button", { name: "Data gaps (1)" }));
+    rerender(<ReportView request={request} report={report} />);
+    expect(screen.getByRole("button", { name: "Data gaps (1)" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const failed = { ...report, analysis_status: "failed" as const };
+    rerender(<ReportView request={request} report={failed} />);
+    expect(screen.getByRole("button", { name: "Evidence (4)" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    rerender(<ReportView request={request} report={{ ...report }} />);
+    expect(screen.getByRole("button", { name: "Analysis & checks" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("preserves a long saved summary without truncating its uncertainty", () => {
+    const legacySummary = `${"Recorded telemetry needs further review. ".repeat(15)}The cause remains unknown.`;
+    render(<ReportView request={request} report={{ ...report, summary: legacySummary }} />);
+    expect(screen.getByRole("region", { name: "Summary" })).toHaveTextContent(legacySummary);
   });
 });

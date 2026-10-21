@@ -18,7 +18,7 @@ from ai_incident_investigator.investigations.reports import (
     RecommendedCheck,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
-from ai_incident_investigator.llm.prompts import SYSTEM_PROMPT
+from ai_incident_investigator.llm.prompts import SUMMARY_MAX_WORDS, SYSTEM_PROMPT
 
 DATASET_PATH = Path(__file__).resolve().parents[1] / "evals" / "scenarios.json"
 FIXTURES_DIR = DATASET_PATH.parent / "fixtures"
@@ -30,9 +30,14 @@ def dataset() -> Dataset:
 
 
 class StubAnalyzer:
-    def __init__(self, mode: str = "success") -> None:
+    def __init__(
+        self,
+        mode: str = "success",
+        summary: str = "Collected observations require further investigation.",
+    ) -> None:
         self.mode = mode
         self.calls = 0
+        self.summary = summary
 
     def analyze(
         self,
@@ -47,7 +52,7 @@ class StubAnalyzer:
             raise AnalysisError("Synthetic provider failure")
 
         return Analysis(
-            summary="Collected observations require further investigation.",
+            summary=self.summary,
             findings=[
                 Finding(
                     statement="An observation was collected.",
@@ -99,6 +104,63 @@ def test_success_preserves_observations_and_skips_empty_case(dataset: Dataset) -
 
         if not baseline.evidence:
             assert not case.report.findings and not case.report.hypotheses
+
+
+@pytest.mark.parametrize("word_count", [SUMMARY_MAX_WORDS, SUMMARY_MAX_WORDS + 1])
+def test_live_evaluation_grades_summary_length_without_discarding_the_report(
+    dataset: Dataset, word_count: int
+) -> None:
+    summary = " ".join(["observation"] * word_count)
+    result = run_live_evaluation(
+        dataset,
+        fixtures_dir=FIXTURES_DIR,
+        analyzer=StubAnalyzer(summary=summary),
+        model="test-model",
+    )
+    for case in result.results:
+        assert case.report is not None
+        check = next(check for check in case.checks if check.name == "summary_concise")
+        assert check.passed == (case.calls == 0 or word_count <= SUMMARY_MAX_WORDS)
+        if case.calls:
+            assert case.report.analysis_status == "completed"
+            assert case.report.summary == summary
+    assert result.passed == (word_count <= SUMMARY_MAX_WORDS)
+
+
+def test_readability_scenario_preserves_lifecycle_logs_and_metric_context() -> None:
+    dataset = load_dataset(DATASET_PATH.with_name("report-readability.json"))
+    result = run_live_evaluation(
+        dataset, fixtures_dir=FIXTURES_DIR, analyzer=StubAnalyzer(), model="test-model"
+    )
+    assert result.passed and result.total_calls == 1
+    report = result.results[0].report
+    assert report is not None
+    assert len(report.evidence) == 9
+    assert any("Graceful shutdown complete" in item.summary for item in report.evidence)
+    assert any(item.id == "metric-jvm-heap" for item in report.evidence)
+    assert any("incomplete coverage" in issue for issue in report.missing_data)
+
+
+@pytest.mark.parametrize(
+    ("summary", "passed"),
+    [
+        ("Service logs record a restart; the cause remains unknown.", True),
+        ("Prometheus reports 30.4 MB of heap usage. Memory pressure remains unknown.", True),
+        ("Logs record a restart. Metrics report heap usage. The cause remains unknown.", False),
+    ],
+)
+def test_live_evaluation_checks_sentence_limit_without_splitting_decimal_values(
+    dataset: Dataset, summary: str, passed: bool
+) -> None:
+    result = run_live_evaluation(
+        dataset,
+        fixtures_dir=FIXTURES_DIR,
+        analyzer=StubAnalyzer(summary=summary),
+        model="test-model",
+    )
+    for case in result.results:
+        check = next(check for check in case.checks if check.name == "summary_sentence_limit")
+        assert check.passed == (case.calls == 0 or passed)
 
 
 @pytest.mark.parametrize("mode", ["error", "unknown-id"])

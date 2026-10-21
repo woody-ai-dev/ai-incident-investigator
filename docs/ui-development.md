@@ -57,6 +57,14 @@ Mouse highlighting clears when the pointer leaves, including after a click. Keyb
 focus provides the same source context until focus moves away. On touch screens, tapping
 a source button shows its context until focus moves elsewhere.
 
+Reports start with a named Summary section. New model summaries are instructed to use
+one or two sentences, at most 60 words: the main observation, its source, and essential
+uncertainty. Detailed timestamps and metric values belong in evidence-backed findings.
+Completed AI analyses open Analysis & checks; other statuses open Evidence. A new report
+resets this default, while manual section choices remain for the current report. Empty
+hypothesis sections are hidden. Saved summaries remain complete, including older long
+summaries; the UI does not truncate text or call a model again when opening history.
+
 Findings and hypotheses link to their evidence IDs. Source references are shown as text
 because JSONL references and Compose hostnames are not public web links. Logs and model
 text are rendered as text. Export JSON saves a versioned envelope with `schema_version:

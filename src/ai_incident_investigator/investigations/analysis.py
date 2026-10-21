@@ -17,7 +17,13 @@ from ai_incident_investigator.usage.models import LLMUsage
 
 
 class Analysis(ReportModel):
-    summary: ReportText
+    summary: ReportText = Field(
+        description=(
+            "One main supported observation and its telemetry source, followed only by "
+            "the essential uncertainty about cause or impact. Use one or two short sentences. "
+            "Put secondary observations, timestamps and metric ranges in findings."
+        )
+    )
     findings: list[Finding] = Field(max_length=10)
     hypotheses: list[Hypothesis] = Field(max_length=5)
     recommended_checks: list[RecommendedCheck] = Field(min_length=1, max_length=10)
