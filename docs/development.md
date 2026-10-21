@@ -134,9 +134,10 @@ uv run --locked mypy
 uv run --locked pytest
 ```
 
-GitHub Actions runs five jobs on pull requests and pushes to main:
+GitHub Actions runs these validation jobs on pull requests and pushes to main:
 
-- Python formatting, linting, type checks, and tests.
+- Python formatting, linting, type checks, tests, and coverage reports.
+- Gitleaks scanning of the full Git history with redacted findings.
 - PostgreSQL integration tests using a dedicated database and per-test schemas.
 - Java tests and the Java-to-Python log contract check.
 - Frontend formatting, linting, component and browser tests, E2E type checks, and production builds.
@@ -155,3 +156,8 @@ filtering, and partial collection failures. CI requires no OpenAI API key.
 
 The Docker job removes its temporary containers, telemetry volumes, and investigation
 database volume after the checks.
+
+Successful Python checks and secret scanning on `main` also publish the Python coverage
+badge to a separate `coverage-badges` branch. The publication job uses GitHub's automatic
+token; no user API keys or external coverage service are required. See
+[CI security and coverage setup](ci-security.md) for permissions and repository settings.

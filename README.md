@@ -1,6 +1,7 @@
 # AI Incident Investigator
 
 [![CI (main)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml/badge.svg?branch=main&event=push)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml?query=branch%3Amain)
+[![Python coverage](https://raw.githubusercontent.com/woody-ai-dev/ai-incident-investigator/coverage-badges/python-coverage.svg)](docs/ci-security.md#python-coverage)
 [![Release](https://img.shields.io/github/v/release/woody-ai-dev/ai-incident-investigator)](https://github.com/woody-ai-dev/ai-incident-investigator/releases/latest)
 
 An incident investigation assistant that helps on-call engineers and SREs turn service
@@ -22,10 +23,13 @@ remediation is not implemented.
 | Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod |
 | Telemetry | JSONL logs, Prometheus, Spring Boot Actuator, Micrometer |
 | Demo service | Java 25, Spring Boot 4, Maven Wrapper |
-| Testing | pytest, Vitest, Testing Library, Playwright, JUnit |
+| Testing | pytest, pytest-cov, Vitest, Testing Library, Playwright, JUnit |
 | Code quality | Ruff, mypy, ESLint, Prettier |
 | Build and runtime | uv, Docker, Docker Compose, Nginx |
-| CI | GitHub Actions |
+| CI | GitHub Actions, Gitleaks |
+
+The Python coverage badge is published after the first successful `main` CI run with
+this configuration. See [CI security and coverage setup](docs/ci-security.md).
 
 Only implemented technologies are listed here. Planned capabilities are described in the
 [roadmap](#roadmap).
