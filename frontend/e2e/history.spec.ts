@@ -24,6 +24,12 @@ test("opens a saved report after creation, reloads its URL and never repeats ana
   await expect(page.getByRole("region", { name: "Investigation report" })).toContainText(
     investigationReport.summary,
   );
+  await expect(page.getByRole("region", { name: "Summary" })).toContainText(
+    investigationReport.summary,
+  );
+  await expect(
+    page.getByRole("button", { name: "Analysis & checks", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   const back = await page.getByRole("link", { name: "← Back to investigations" }).boundingBox();
   const title = await page
     .getByRole("heading", { name: "Saved investigation", exact: true })
@@ -32,6 +38,9 @@ test("opens a saved report after creation, reloads its URL and never repeats ana
   expect(title).not.toBeNull();
   expect(title!.y - (back!.y + back!.height)).toBeGreaterThanOrEqual(16);
   await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Analysis & checks", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("region", { name: "Saved metadata" })).toContainText(savedId);
   await expect(page.getByRole("button", { name: /^Logs:/ })).toContainText("Not recorded");
   await page.getByRole("button", { name: "Copy report link" }).click();
@@ -82,6 +91,48 @@ test("preserves recorded collection durations when reopening a saved report", as
   await expect(page.getByRole("button", { name: /^Logs:/ })).toContainText("Collected · 42 ms");
   expect(reads).toBe(2);
 });
+
+for (const width of [1400, 390]) {
+  test(`keeps summary, findings and checks visible in current and saved reports at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const report = { ...investigationReport, hypotheses: [] };
+    let analyses = 0;
+    await page.route("**/api/investigations", (route) => {
+      analyses++;
+      return route.fulfill({ json: report, headers: { "X-Investigation-ID": savedId } });
+    });
+    await page.route(`**/api/investigations/${savedId}`, (route) =>
+      route.fulfill({ json: { ...savedInvestigation, report } }),
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: "Investigate", exact: true }).click();
+    const view = page.getByRole("region", { name: "Investigation report" });
+    for (const saved of [false, true]) {
+      if (saved) {
+        await page.getByRole("link", { name: "Open saved investigation →" }).click();
+        await expect(page).toHaveURL(new RegExp(`/investigations/${savedId}$`));
+        await expect(page.getByRole("region", { name: "Saved metadata" })).toContainText(savedId);
+      }
+      await expect(view.getByRole("region", { name: "Summary" })).toContainText(report.summary);
+      await expect(
+        view.getByRole("button", { name: "Analysis & checks", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await expect(view.getByRole("heading", { name: "Findings", exact: true })).toBeVisible();
+      await expect(view.getByText("Inspect payment latency.", { exact: true })).toBeVisible();
+      await expect(view.getByRole("heading", { name: "Hypotheses", exact: true })).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await view.getByRole("button", { name: "log-timeout", exact: true }).click();
+      await expect(view.getByRole("complementary", { name: "Evidence details" })).toContainText(
+        "local-jsonl:line:42",
+      );
+    }
+    expect(analyses).toBe(1);
+  });
+}
 
 test("keeps filters and pages in URLs, restores them on return and validates date ranges", async ({
   page,

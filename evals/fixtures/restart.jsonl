@@ -1,0 +1,5 @@
+{"timestamp": "2026-10-21T19:17:52Z", "service": "order-service", "environment": "local", "level": "INFO", "message": "Started OrderService; Tomcat initialized on port 8081."}
+{"timestamp": "2026-10-21T19:20:05Z", "service": "order-service", "environment": "local", "level": "INFO", "message": "Commencing graceful shutdown. Waiting for active requests to complete."}
+{"timestamp": "2026-10-21T19:20:06Z", "service": "order-service", "environment": "local", "level": "INFO", "message": "Graceful shutdown complete."}
+{"timestamp": "2026-10-21T19:20:08Z", "service": "order-service", "environment": "local", "level": "INFO", "message": "Starting OrderService with Java 25."}
+{"timestamp": "2026-10-21T19:20:16Z", "service": "order-service", "environment": "local", "level": "INFO", "message": "Started OrderService; Tomcat started on port 8081."}

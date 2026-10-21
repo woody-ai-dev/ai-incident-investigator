@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -28,7 +29,11 @@ from ai_incident_investigator.investigations.analysis import (
 from ai_incident_investigator.investigations.reports import Evidence, InvestigationReport
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.investigations.service import investigate
-from ai_incident_investigator.llm.prompts import SYSTEM_PROMPT
+from ai_incident_investigator.llm.prompts import (
+    SUMMARY_MAX_SENTENCES,
+    SUMMARY_MAX_WORDS,
+    SYSTEM_PROMPT,
+)
 
 
 class LiveCaseResult(DatasetModel):
@@ -120,6 +125,17 @@ def _grade_live_report(
         "analysis_status": (
             report.analysis_status == expected_status,
             f"Expected analysis_status={expected_status}.",
+        ),
+        "summary_concise": (
+            not has_evidence or len(report.summary.split()) <= SUMMARY_MAX_WORDS,
+            f"Generated summaries must contain at most {SUMMARY_MAX_WORDS} "
+            "whitespace-separated words.",
+        ),
+        "summary_sentence_limit": (
+            not has_evidence
+            or len(re.split(r"(?<=[.!?])\s+", report.summary.strip())) <= SUMMARY_MAX_SENTENCES,
+            f"Generated summaries must contain at most {SUMMARY_MAX_SENTENCES} sentence-like "
+            "segments separated by sentence punctuation and whitespace.",
         ),
         "analysis_attempts": (
             calls == int(has_evidence),

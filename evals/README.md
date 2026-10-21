@@ -73,6 +73,13 @@ Do not interpret 4/4 offline pipeline passes as 100% LLM accuracy. A separate
 real-model review has been recorded; its small synthetic dataset and limited
 repetitions do not establish production accuracy or reliability.
 
+The single-case `report-readability.json` dataset exercises a short, source-attributed
+summary with synthetic restart logs and metric/Actuator context. Run it with
+`scripts/evaluate_investigations.py --dataset evals/report-readability.json` for the
+offline baseline. The opt-in live runner also grades generated summary length against
+the 60-word and two-sentence presentation limits; source support and preserved
+uncertainty require review.
+
 An additional [metric interpretation regression suite](metric-boundaries.md)
 covers scrape success versus business failure, heap summaries without baselines,
 cumulative counters, and incomplete scrape coverage. Its offline results also

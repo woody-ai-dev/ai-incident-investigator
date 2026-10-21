@@ -26,6 +26,13 @@ test("navigates report evidence and downloads the full JSON export", async ({ pa
   const details = report.getByRole("complementary", {
     name: "Evidence details",
   });
+  await expect(
+    report.getByRole("button", { name: "Analysis & checks", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(report.getByRole("region", { name: "Summary" })).toHaveText(
+    `Summary${investigationReport.summary}`,
+  );
+  await report.getByRole("button", { name: "Evidence (3)", exact: true }).click();
   const observation = report.getByRole("button", {
     name: /Payment request timed out/,
   });
@@ -164,6 +171,7 @@ test("keeps the last successful report available after a subsequent HTTP 500", a
   ).toBeVisible();
   const report = page.getByRole("region", { name: "Investigation report" });
   await expect(report.getByText(investigationReport.summary, { exact: true })).toBeVisible();
+  await report.getByRole("button", { name: "Evidence (3)", exact: true }).click();
   await report.getByRole("button", { name: /Payment request timed out/ }).click();
   await expect(report.getByRole("complementary", { name: "Evidence details" })).toContainText(
     "local-jsonl:line:42",

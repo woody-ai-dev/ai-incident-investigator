@@ -46,6 +46,17 @@ evidence and data gaps, and saves a checkpoint after each case. Artifacts includ
 requested model, prompt and dataset fingerprints, optional code revision, durations,
 reports, and technical checks.
 
+Generated summaries also have a deterministic 60-word evaluation check and a
+two-sentence formatting heuristic (sentence punctuation followed by whitespace).
+These are presentation checks, not factual-accuracy scores or new report validation
+rules; abbreviations and unusual punctuation still require manual review.
+The single-case `evals/report-readability.json` dataset combines synthetic lifecycle
+logs, heap and scrape metrics, partial coverage, and later Actuator snapshots. Its
+review questions check source attribution, concise wording, unknown causality, and
+preservation of detailed observations in findings.
+The [readability validation record](validation/2026-10-21-report-readability.md)
+includes three real-model attempts, the accepted summary, and remaining limits.
+
 Live evaluation requires an explicit `--allow-live` flag and API credentials. It runs
 separately from ordinary CI, with bounded analysis attempts and SDK retries disabled. An
 empty evidence set skips the model. Existing output files are refused; local results
