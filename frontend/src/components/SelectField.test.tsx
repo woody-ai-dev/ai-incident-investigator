@@ -235,3 +235,38 @@ it("selects the last item in a long list by keyboard and retains it when Escape 
   expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   expect(trigger).toHaveFocus();
 });
+
+it("supports clearing an optional filter without leaking its internal All value", async () => {
+  const user = userEvent.setup();
+  function OptionalField() {
+    const [value, setValue] = useState("");
+    return (
+      <form>
+        <label htmlFor="service">Service</label>
+        <SelectField
+          id="service"
+          name="service"
+          value={value}
+          options={[...options, { value: "__select_empty__", label: "Historical service" }]}
+          emptyLabel="All services"
+          onValueChange={setValue}
+        />
+        <output aria-label="Chosen service">{value || "No filter"}</output>
+      </form>
+    );
+  }
+  render(<OptionalField />);
+  const trigger = screen.getByRole("combobox", { name: "Service" });
+  expect(trigger).toHaveTextContent("All services");
+  expect(trigger).not.toHaveAttribute("aria-required", "true");
+  await user.click(trigger);
+  await user.click(screen.getByRole("option", { name: "Historical service" }));
+  expect(screen.getByRole("status", { name: "Chosen service" })).toHaveTextContent(
+    "__select_empty__",
+  );
+  await user.click(trigger);
+  await user.click(screen.getByRole("option", { name: "All services" }));
+  expect(trigger).toHaveTextContent("All services");
+  expect(new FormData(trigger.closest("form")!).get("service")).toBe("");
+  expect(screen.getByRole("status", { name: "Chosen service" })).toHaveTextContent("No filter");
+});

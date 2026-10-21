@@ -35,7 +35,7 @@
         <mxCell id="react-title" value="React + TypeScript" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="react-group">
           <mxGeometry x="16" y="5" width="245" height="23" as="geometry" />
         </mxCell>
-        <mxCell id="react-body" value="Submit · inspect evidence · download JSON" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="react-group">
+        <mxCell id="react-body" value="Submit · browse history · share saved reports" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="react-group">
           <mxGeometry x="16" y="31" width="245" height="16" as="geometry" />
         </mxCell>
         <mxCell id="nginx-group" value="" style="group;" vertex="1" connectable="1" parent="1">
@@ -59,7 +59,7 @@
         <mxCell id="fastapi-title" value="FastAPI · create_app()" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="fastapi-group">
           <mxGeometry x="16" y="5" width="270" height="23" as="geometry" />
         </mxCell>
-        <mxCell id="fastapi-body" value="HTTP validation · POST workflow · GET snapshot" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="fastapi-group">
+        <mxCell id="fastapi-body" value="POST workflow · list / filter · GET snapshot" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="fastapi-group">
           <mxGeometry x="16" y="31" width="270" height="16" as="geometry" />
         </mxCell>
         <mxCell id="request-browser-proxy" edge="1" parent="1" source="react-group" target="nginx-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;">
@@ -574,10 +574,10 @@
         <mxCell id="snapshot-read-accent" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#15805D;strokeColor=#15805D;strokeWidth=1;">
           <mxGeometry x="1144" y="1096" width="4" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="snapshot-read-title" value="Read saved investigation" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=14;fontColor=#172B43;fontStyle=1;spacing=0;">
+        <mxCell id="snapshot-read-title" value="Browse / open saved reports" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=14;fontColor=#172B43;fontStyle=1;spacing=0;">
           <mxGeometry x="1159" y="1091" width="293" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="snapshot-read-body" value="GET /investigations/{id}" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+        <mxCell id="snapshot-read-body" value="GET /investigations · GET /{id}" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
           <mxGeometry x="1159" y="1120" width="293" height="20" as="geometry" />
         </mxCell>
         <mxCell id="report-to-storage" edge="1" parent="1" source="report-group" target="snapshot-repository" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;strokeColor=#15805D;strokeWidth=1.7;endArrow=block;endFill=1;exitX=0.49851632047477745;exitY=1.0;exitPerimeter=0;entryX=0.49851632047477745;entryY=0.0;entryPerimeter=0;">
@@ -631,7 +631,7 @@
         <mxCell id="read-label" value="load" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#15805D;fontStyle=0;spacing=0;">
           <mxGeometry x="1308" y="1043" width="100" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="storage-limits" value="No DB session during collection or LLM calls. Workflow commits before the ID header. Optional DB; history UI is a later step." vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;">
+        <mxCell id="storage-limits" value="No DB session during collection or LLM calls. ID follows commit. History reads use cursor pagination; no model calls." vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;">
           <mxGeometry x="70" y="1171" width="1400" height="22" as="geometry" />
         </mxCell>
       </root>

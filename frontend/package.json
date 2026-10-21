@@ -17,13 +17,15 @@
     "e2e:serve": "npm run build && vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test:e2e": "playwright test",
     "test:e2e:compose": "playwright test --config=playwright.compose.config.ts",
-    "test:e2e:live": "playwright test --config=playwright.live.config.ts"
+    "test:e2e:live": "playwright test --config=playwright.live.config.ts",
+    "test:e2e:history": "playwright test --config=playwright.history.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-select": "2.3.8",
     "get-nonce": "1.0.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-router": "8.5.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

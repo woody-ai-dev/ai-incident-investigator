@@ -239,4 +239,8 @@ def test_saved_analysis_retains_evidence_and_get_does_not_repeat_analysis(
     assert saved_response.status_code == 200
     saved = StoredInvestigation.model_validate(saved_response.json())
     assert saved.report == report
+    history = client.get("/investigations")
+    assert history.status_code == 200
+    assert history.json()["items"][0]["id"] == str(saved.id)
+    assert history.json()["items"][0]["analysis_status"] == report.analysis_status
     assert analyzer.calls == 1

@@ -19,7 +19,7 @@ remediation is not implemented.
 | Backend | Python 3.12+, FastAPI, Pydantic, HTTPX, Uvicorn |
 | Persistence | PostgreSQL 17, SQLAlchemy 2, Psycopg 3, Alembic |
 | AI analysis | OpenAI Python SDK, Responses API, structured outputs |
-| Frontend | React 19, TypeScript, Vite, Radix UI, Zod |
+| Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod |
 | Telemetry | JSONL logs, Prometheus, Spring Boot Actuator, Micrometer |
 | Demo service | Java 25, Spring Boot 4, Maven Wrapper |
 | Testing | pytest, Vitest, Testing Library, Playwright, JUnit |
@@ -34,6 +34,8 @@ Only implemented technologies are listed here. Planned capabilities are describe
 
 - FastAPI endpoints for health checks and investigation requests.
 - Optional PostgreSQL snapshots with UUID retrieval and explicit schema migrations.
+- Investigation history with service/environment/creation-date filters, cursor pagination,
+  and shareable saved-report pages that survive a browser refresh.
 - Validated service, environment, and timezone-aware investigation windows.
 - JSONL collection filtered by service, environment, and time.
 - Log evidence with references to physical lines in the source file.
@@ -85,7 +87,7 @@ See the
 
 ## Architecture
 
-![Current architecture: on-demand investigation, telemetry sources, optional analysis and PostgreSQL snapshots](docs/architecture/architecture.svg)
+![Current architecture: on-demand investigation, telemetry sources, optional analysis, history and PostgreSQL snapshots](docs/architecture/architecture.svg)
 
 [Editable draw.io diagram](docs/architecture/architecture.drawio)
 
@@ -119,16 +121,18 @@ artifacts in files.
 Enable the optional PostgreSQL store using the
 [persistence setup guide](docs/persistence.md#run-the-compose-demo-with-persistence).
 
-The POST response keeps its existing report JSON and adds `X-Investigation-ID` after
-committing the snapshot. Retrieve the saved request, report, and metadata with `GET
-/investigations/{id}`. Normal restarts preserve the database volume. The React history
-screen is a separate upcoming step.
+Open **Investigations** in the sidebar to browse saved reports. Filter by exact service
+and environment names and by creation time; dates use your browser timezone. Older
+results use cursor pagination. Select **Open report** to inspect the original evidence,
+analysis, data gaps, configured model, prompt hash, and execution duration. **Copy report
+link** creates a direct URL that can be reopened after a refresh.
 
-Stored model and prompt metadata describe the configured analysis settings, not proof
-that a model request was made. Token usage and cost accounting are separate planned
-features.
-
-See [persistence setup, API behavior, and tests](docs/persistence.md).
+A new report includes an **Open saved investigation** link when persistence succeeds.
+The POST response keeps its report JSON and adds `X-Investigation-ID` after commit.
+`GET /investigations` lists summaries; `GET /investigations/{id}` retrieves a full
+snapshot. These reads never collect sources or call a model. Without PostgreSQL, new
+investigations still work and the history page explains that storage is unavailable.
+See [history and API details](docs/persistence.md#browse-history-in-the-ui).
 
 ## Quick start with Docker Compose
 
@@ -265,9 +269,9 @@ limited to one JSONL source, three fixed Prometheus queries, and one configured 
 target. Actuator reports current state; metric counters are cumulative, and scrape
 success does not establish business health.
 
-Model output still requires engineering review. The current UI keeps one report in
-memory; saved snapshots are available through the optional persistence API, not a
-history screen. Queues, traces, RAG, automated fixes, and notifications are not
+Model output still requires engineering review. Saved history and shareable report
+pages require optional PostgreSQL storage. Without it, the workspace keeps its latest
+report only in memory. Queues, traces, RAG, automated fixes, and notifications are not
 implemented. See [all collection and analysis limits](docs/limitations.md) and the
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
 
@@ -302,9 +306,9 @@ to point to the matching guide.
 
 ## Roadmap
 
-The next user-facing step is an investigation history screen backed by saved snapshots,
-followed by source statuses and collection durations, token/cost accounting, and broader
-evaluation. Metric interpretation still needs repeated checks on unseen incidents;
+Next steps include more detailed source statuses and collection timing, token/cost
+accounting, and broader evaluation. Metric interpretation still needs repeated checks
+on unseen incidents;
 current validation records document remaining errors.
 
 Later work may add centralized telemetry, traces, background jobs, alert-triggered

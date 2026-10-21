@@ -203,7 +203,8 @@ export function SourceFlow({ phase, report }: SourceFlowProps) {
           height="52"
           rx="10"
           className={styles.reportNode}
-          data-active={active !== null}
+          data-report-state={current ? "received" : phase === "loading" ? "pending" : "empty"}
+          data-active={active !== null && (phase === "loading" || Boolean(current))}
         />
         <text x="576" y="113" textAnchor="middle" className={styles.title}>
           Report

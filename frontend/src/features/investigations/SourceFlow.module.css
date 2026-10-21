@@ -70,21 +70,29 @@
     stroke 160ms ease,
     filter 160ms ease;
 }
-.node[data-active="true"],
-.reportNode[data-active="true"] {
-  fill: #edf4ff;
-  stroke: #2764e7;
-  filter: drop-shadow(0 3px 5px #2764e71f);
-}
 .node {
   fill: #fff;
   stroke: #dce4ee;
   stroke-width: 1.5;
 }
 .reportNode {
+  fill: #fff;
+  stroke: #dce4ee;
+  stroke-width: 1.5;
+}
+.reportNode[data-report-state="pending"] {
+  fill: #f8faff;
+  stroke: #a8c0f6;
+}
+.reportNode[data-report-state="received"] {
   fill: #f0f5ff;
   stroke: #a8c0f6;
-  stroke-width: 1.5;
+}
+.node[data-active="true"],
+.reportNode[data-active="true"] {
+  fill: #edf4ff;
+  stroke: #2764e7;
+  filter: drop-shadow(0 3px 5px #2764e71f);
 }
 .dot {
   fill: #2764e7;

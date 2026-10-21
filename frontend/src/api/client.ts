@@ -63,7 +63,7 @@ function serverFieldErrors(payload: unknown): Record<string, string> {
   return result;
 }
 
-async function readJson(response: Response): Promise<unknown> {
+export async function readJson(response: Response): Promise<unknown> {
   try {
     return (await response.json()) as unknown;
   } catch (error) {
@@ -75,7 +75,7 @@ async function readJson(response: Response): Promise<unknown> {
 export async function createInvestigation(
   request: InvestigationRequest,
   signal: AbortSignal,
-): Promise<InvestigationReport> {
+): Promise<CreatedInvestigation> {
   const parsed = requestSchema.safeParse(request);
   if (!parsed.success) {
     const fields: Record<string, string> = {};
@@ -88,18 +88,12 @@ export async function createInvestigation(
     throw new ApiError("Check the investigation details.", null, fields);
   }
 
-  let response: Response;
-  try {
-    response = await fetch("/api/investigations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(parsed.data),
-      signal,
-    });
-  } catch (error) {
-    if (isAbortError(error)) throw error;
-    throw new ApiError("Could not connect to the investigator API.");
-  }
+  const response = await fetchApi("/api/investigations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(parsed.data),
+    signal,
+  });
 
   if (response.status === 422) {
     let payload: unknown;
@@ -121,5 +115,19 @@ export async function createInvestigation(
   const report = reportSchema.safeParse(await readJson(response));
   if (!report.success)
     throw new ApiError("The API returned an invalid investigation report.", response.status);
-  return report.data;
+  const rawId = response.headers.get("X-Investigation-ID");
+  const id = z.uuid().safeParse(rawId);
+  // A committed report is still useful if a proxy dropped or malformed its optional header.
+  return { report: report.data, id: id.success ? id.data : null };
+}
+
+export type CreatedInvestigation = { report: InvestigationReport; id: string | null };
+
+export async function fetchApi(path: string, options: RequestInit): Promise<Response> {
+  try {
+    return await fetch(path, options);
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new ApiError("Could not connect to the investigator API.");
+  }
 }

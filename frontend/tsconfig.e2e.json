@@ -4,6 +4,7 @@
     "e2e",
     "playwright.config.ts",
     "playwright.compose.config.ts",
+    "playwright.history.config.ts",
     "playwright.live.config.ts"
   ]
 }

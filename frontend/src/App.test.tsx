@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { ApiError, createInvestigation } from "./api/client";
-import { reportSchema, type InvestigationReport } from "./api/contracts";
+import { ApiError, createInvestigation, type CreatedInvestigation } from "./api/client";
+import { reportSchema } from "./api/contracts";
 
 vi.mock("./api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api/client")>();
@@ -36,6 +36,7 @@ const scrollMock = vi.fn();
 const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/");
   createMock.mockReset();
   scrollMock.mockReset();
   vi.stubGlobal(
@@ -56,7 +57,7 @@ afterEach(() => {
 
 describe("investigation workspace", () => {
   it("shows a fast response in the evidence flow, with real counts and a visible request status", async () => {
-    createMock.mockResolvedValue(report);
+    createMock.mockResolvedValue({ report, id: null });
     const user = userEvent.setup();
     render(<App />);
     const button = screen.getByRole("button", { name: "Investigate" });
@@ -80,8 +81,8 @@ describe("investigation workspace", () => {
   });
 
   it("keeps the pending flow and status visible until the response arrives", async () => {
-    let resolve!: (value: InvestigationReport) => void;
-    const pending = new Promise<InvestigationReport>((complete) => {
+    let resolve!: (value: CreatedInvestigation) => void;
+    const pending = new Promise<CreatedInvestigation>((complete) => {
       resolve = complete;
     });
     createMock.mockReturnValue(pending);
@@ -98,7 +99,7 @@ describe("investigation workspace", () => {
     expect(screen.queryByRole("region", { name: "Investigation report" })).not.toBeInTheDocument();
 
     await act(async () => {
-      resolve(report);
+      resolve({ report, id: null });
       await pending;
     });
     expect(screen.getByText("Report received")).toBeVisible();
@@ -107,12 +108,12 @@ describe("investigation workspace", () => {
   });
 
   it("keeps the previous report and its selected tab during a new request, cancellation and failure", async () => {
-    let resolve!: (value: InvestigationReport) => void;
-    const pending = new Promise<InvestigationReport>((complete) => {
+    let resolve!: (value: CreatedInvestigation) => void;
+    const pending = new Promise<CreatedInvestigation>((complete) => {
       resolve = complete;
     });
     createMock
-      .mockResolvedValueOnce(report)
+      .mockResolvedValueOnce({ report, id: null })
       .mockReturnValueOnce(pending)
       .mockRejectedValueOnce(new ApiError("Could not connect to the investigator API."));
     const user = userEvent.setup();
@@ -143,7 +144,7 @@ describe("investigation workspace", () => {
     ).toBeVisible();
 
     await act(async () => {
-      resolve({ ...report, summary: "Discard this cancelled response." });
+      resolve({ report: { ...report, summary: "Discard this cancelled response." }, id: null });
       await pending;
     });
     expect(screen.queryByText("Discard this cancelled response.")).not.toBeInTheDocument();

@@ -39,5 +39,6 @@ original evidence is available for checking each claim. See the
 - The SDK uses a 20-second timeout and at most one retry.
 - Requests use store=False; this does not imply zero provider data retention.
 - PostgreSQL snapshots are optional; the default Compose demo does not enable storage.
-- The UI keeps one report in memory; history lists and background workers are not implemented.
+- Saved history requires PostgreSQL; without it the workspace keeps one report in memory.
+- Background workers and automatic incident detection are not implemented.
 - No automatic patch generation, pull requests, deployment, or on-call notifications.

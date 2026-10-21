@@ -4,7 +4,7 @@ from time import perf_counter
 from uuid import UUID
 
 from ai_incident_investigator.investigations.analysis import Analyzer
-from ai_incident_investigator.investigations.ports import InvestigationStore
+from ai_incident_investigator.investigations.ports import InvestigationWriter
 from ai_incident_investigator.investigations.records import StoredInvestigation
 from ai_incident_investigator.investigations.reports import InvestigationReport
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
@@ -34,7 +34,7 @@ def execute_investigation(
     metrics_collector: MetricsCollector | None = None,
     actuator_collector: ActuatorCollector | None = None,
     analyzer: Analyzer | None = None,
-    store: InvestigationStore | None = None,
+    store: InvestigationWriter | None = None,
     analysis_configuration: AnalysisConfiguration | None = None,
 ) -> InvestigationExecution:
     """Run collection and analysis, then commit an optional completed snapshot.

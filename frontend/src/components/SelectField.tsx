@@ -13,6 +13,7 @@ type SelectFieldProps = {
   name: string;
   value: string;
   options: readonly SelectOption[];
+  emptyLabel?: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
   invalid?: boolean;
@@ -26,6 +27,7 @@ export function SelectField({
   name,
   value,
   options,
+  emptyLabel,
   onValueChange,
   disabled = false,
   invalid = false,
@@ -34,6 +36,11 @@ export function SelectField({
   onOpenChange,
 }: SelectFieldProps) {
   const [localOpen, setLocalOpen] = useState(false);
+  // Radix reserves "" for clearing a value; represent the optional All item internally.
+  let emptyValue = "__select_empty__";
+  while (options.some((option) => option.value === emptyValue)) emptyValue += "_";
+  const displayedOptions =
+    emptyLabel === undefined ? options : [{ value: emptyValue, label: emptyLabel }, ...options];
   const open = controlledOpen ?? localOpen;
   function changeOpen(next: boolean) {
     setLocalOpen(next);
@@ -41,14 +48,19 @@ export function SelectField({
   }
   return (
     <div className={styles.field}>
+      {emptyLabel !== undefined && (
+        <input type="hidden" name={name} value={value} disabled={disabled} />
+      )}
       <Select.Root
         open={open}
         onOpenChange={changeOpen}
-        name={name}
-        value={value}
-        onValueChange={onValueChange}
+        {...(emptyLabel === undefined ? { name } : {})}
+        value={emptyLabel !== undefined && value === "" ? emptyValue : value}
+        onValueChange={(next) =>
+          onValueChange(emptyLabel !== undefined && next === emptyValue ? "" : next)
+        }
         disabled={disabled}
-        required
+        required={emptyLabel === undefined}
       >
         <Select.Trigger
           id={id}
@@ -77,7 +89,7 @@ export function SelectField({
               </svg>
             </Select.ScrollUpButton>
             <Select.Viewport className={styles.viewport} nonce={getNonce() ?? ""}>
-              {options.map((option) => (
+              {displayedOptions.map((option) => (
                 <Select.Item key={option.value} value={option.value} className={styles.item}>
                   <Select.ItemText>{option.label}</Select.ItemText>
                   <Select.ItemIndicator className={styles.indicator}>
