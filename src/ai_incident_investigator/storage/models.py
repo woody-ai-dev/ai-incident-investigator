@@ -25,6 +25,7 @@ class InvestigationRow(Base):
     __table_args__ = (
         CheckConstraint("duration_ms >= 0", name="ck_investigations_duration_nonnegative"),
         CheckConstraint("schema_version = 1", name="ck_investigations_schema_version"),
+        Index("ix_investigations_created_id", "created_at", "id"),
         Index(
             "ix_investigations_service_environment_created", "service", "environment", "created_at"
         ),

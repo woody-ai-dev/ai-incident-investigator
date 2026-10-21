@@ -1,16 +1,30 @@
+import { useEffect, useRef } from "react";
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router";
 import { Logo } from "./components/Logo";
-import { SourceFlow } from "./features/investigations/SourceFlow";
-import { InvestigationForm } from "./features/investigations/InvestigationForm";
-import { ReportView } from "./features/investigations/ReportView";
-import { useInvestigation } from "./features/investigations/useInvestigation";
+import { InvestigationWorkspace } from "./features/investigations/InvestigationWorkspace";
+import { InvestigationHistory } from "./features/history/InvestigationHistory";
+import { SavedInvestigation } from "./features/history/SavedInvestigation";
 import styles from "./App.module.css";
 
-export default function App() {
-  const { state, lastResult, submit, cancel } = useInvestigation();
+function WorkspaceRoutes() {
+  const location = useLocation();
+  const main = useRef<HTMLElement>(null);
+  const previousPath = useRef(location.pathname);
+  useEffect(() => {
+    if (previousPath.current !== location.pathname) {
+      main.current?.focus();
+      window.scrollTo(0, 0);
+      previousPath.current = location.pathname;
+    }
+    document.title =
+      location.pathname === "/"
+        ? "Incident Investigator"
+        : "Investigations · Incident Investigator";
+  }, [location.pathname]);
   return (
     <div className={styles.shell}>
       <a className={styles.skip} href="#main">
-        Skip to investigation
+        Skip to content
       </a>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
@@ -22,9 +36,12 @@ export default function App() {
           </span>
         </div>
         <nav aria-label="Main navigation">
-          <a href="#main" aria-current="page">
-            ↗ <span>Investigation</span>
-          </a>
+          <NavLink to="/" end>
+            ↗ <span>New investigation</span>
+          </NavLink>
+          <NavLink to="/investigations">
+            ≡ <span>Investigations</span>
+          </NavLink>
         </nav>
         <div className={styles.sidebarFooter}>
           <span className={styles.localDot} /> Local demo
@@ -35,69 +52,34 @@ export default function App() {
           </p>
         </div>
       </aside>
-      <main id="main" className={styles.main}>
+      <main id="main" ref={main} tabIndex={-1} className={styles.main}>
         <header className={styles.header}>
           <span>WORKSPACE / LOCAL</span>
           <span>Read-only investigation</span>
         </header>
-        <div className={styles.title}>
-          <p>FROM SIGNAL TO CONTEXT</p>
-          <h1>Understand what happened.</h1>
-          <span>Collect service evidence and inspect the reasoning behind each conclusion.</span>
-        </div>
-        <div className={styles.workspace}>
-          <InvestigationForm
-            phase={state.phase}
-            evidenceCount={state.phase === "success" ? state.report.evidence.length : null}
-            error={state.phase === "error" ? state.error : null}
-            onSubmit={(request) => {
-              void submit(request);
-            }}
-            onCancel={cancel}
+        <Routes>
+          <Route path="/" element={<InvestigationWorkspace />} />
+          <Route path="/investigations" element={<InvestigationHistory />} />
+          <Route path="/investigations/:id" element={<SavedInvestigation />} />
+          <Route
+            path="*"
+            element={
+              <div className={styles.notFound}>
+                <h1>Page not found</h1>
+                <Link to="/">Start a new investigation</Link>
+              </div>
+            }
           />
-          <section aria-label="Evidence flow" className={styles.flowPanel}>
-            <p className={styles.srOnly} role="status">
-              {state.phase === "loading"
-                ? "Waiting for the investigation report."
-                : state.phase === "success"
-                  ? "Investigation report received."
-                  : ""}
-            </p>
-            <SourceFlow
-              phase={state.phase}
-              {...(state.phase === "success" ? { report: state.report } : {})}
-            />
-          </section>
-        </div>
-        {lastResult ? (
-          <div>
-            <p className={styles.resultStatus} role="status">
-              {state.phase === "loading"
-                ? "Showing the previous report while the new investigation runs."
-                : state.phase === "error"
-                  ? "The new investigation failed. Showing the last received report."
-                  : state.phase === "idle"
-                    ? "Investigation stopped. Showing the last received report."
-                    : "Latest received report"}
-            </p>
-            <ReportView request={lastResult.request} report={lastResult.report} />
-          </div>
-        ) : (
-          <div className={styles.placeholder}>
-            <Logo />
-            <h2>
-              {state.phase === "loading"
-                ? "Waiting for the investigation report…"
-                : "Your evidence will appear here."}
-            </h2>
-            <p>
-              {state.phase === "loading"
-                ? "You can stop waiting. The server may still finish processing the request."
-                : "Choose a service and time window to begin."}
-            </p>
-          </div>
-        )}
+        </Routes>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <WorkspaceRoutes />
+    </BrowserRouter>
   );
 }

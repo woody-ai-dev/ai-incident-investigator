@@ -171,3 +171,43 @@ test("clears mouse highlights while preserving native keyboard inspection", asyn
   await expect(flow.locator('path[data-active="true"]')).toHaveCount(0);
   await expect(context).toContainText("Explore the sources");
 });
+
+test("report node reflects idle, pending, received, failed and stopped request states", async ({
+  page,
+}) => {
+  const node = page.locator("rect[data-report-state]");
+  await expect(node).toHaveAttribute("data-report-state", "empty");
+  await expect(node).toHaveCSS("fill", "rgb(255, 255, 255)");
+  let complete!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
+  await page.route("**/api/investigations", async (route) => {
+    await pending;
+    await route.fulfill({ status: 200, json: investigationReport });
+  });
+  await page.getByRole("button", { name: "Investigate", exact: true }).click();
+  await expect(node).toHaveAttribute("data-report-state", "pending");
+  await expect(node).toHaveCSS("stroke", "rgb(168, 192, 246)");
+  complete();
+  await expect(node).toHaveAttribute("data-report-state", "received");
+  await expect(node).toHaveCSS("fill", "rgb(240, 245, 255)");
+  await page.route("**/api/investigations", (route) => route.fulfill({ status: 500 }));
+  await page.getByRole("button", { name: "Investigate", exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(node).toHaveAttribute("data-report-state", "empty");
+  await expect(node).toHaveCSS("fill", "rgb(255, 255, 255)");
+  let release!: () => void;
+  const cancelled = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/investigations", async (route) => {
+    await cancelled;
+    await route.abort();
+  });
+  await page.getByRole("button", { name: "Investigate", exact: true }).click();
+  await expect(node).toHaveAttribute("data-report-state", "pending");
+  await page.getByRole("button", { name: "Stop waiting", exact: true }).click();
+  await expect(node).toHaveAttribute("data-report-state", "empty");
+  release();
+});

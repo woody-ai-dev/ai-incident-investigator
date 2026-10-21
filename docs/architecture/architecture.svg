@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1490" viewBox="0 0 1540 1490" role="img" aria-labelledby="title desc">
   <title id="title">AI Incident Investigator — optional PostgreSQL persistence</title>
-  <desc id="desc">HTTP validation delegates to the application workflow, which invokes the core investigation pipeline and optionally saves the completed snapshot through an InvestigationStore port. SQLAlchemy and Psycopg implement PostgreSQL persistence. The response ID header is returned only after commit. A GET route loads saved snapshots; Alembic migrations run before startup. The evaluation runner calls the core directly, bypassing persistence, and keeps file artifacts. The history UI is not implemented.</desc>
+  <desc id="desc">HTTP validation delegates to the application workflow, which invokes the core investigation pipeline and optionally saves the completed snapshot through an InvestigationStore port. SQLAlchemy and Psycopg implement PostgreSQL persistence. The response ID header is returned only after commit. A GET route loads saved snapshots; Alembic migrations run before startup. The evaluation runner calls the core directly, bypassing persistence, and keeps file artifacts. React Router provides filtered, cursor-paginated history and shareable saved-report pages. History reads never repeat collection or analysis.</desc>
   <defs>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563EB" />
@@ -38,7 +38,7 @@
     <tspan x="86" dy="0.00">React + TypeScript</tspan>
   </text>
   <text id="react-body" x="86" y="187.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="86" dy="0.00">Submit · inspect evidence · download JSON</tspan>
+    <tspan x="86" dy="0.00">Submit · browse history · share saved reports</tspan>
   </text>
   <rect id="nginx" x="440" y="145" width="275" height="54" rx="9" fill="#F4F8FF" stroke="#D5E3FA" stroke-width="1" />
   <text id="nginx-title" x="456" y="166.30" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#172B43" text-anchor="start">
@@ -52,7 +52,7 @@
     <tspan x="826" dy="0">FastAPI · create_app()</tspan>
   </text>
   <text id="fastapi-body" x="826" y="187.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="826" dy="0">HTTP validation · POST workflow · GET snapshot</tspan>
+    <tspan x="826" dy="0">POST workflow · list / filter · GET snapshot</tspan>
   </text>
   <path id="request-browser-proxy" d="M 345 172 L 440 172" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
   <text id="request-api-prefix" x="392.5" y="158.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#2563EB" text-anchor="middle">
@@ -343,10 +343,10 @@
   <rect id="snapshot-read" x="1129" y="1080" width="337" height="68" rx="12" fill="#F7FBF9" stroke="#DCE5F0" stroke-width="1" />
   <rect id="snapshot-read-accent" x="1144" y="1096" width="4" height="20" rx="2" fill="#15805D" stroke="#15805D" stroke-width="1" />
   <text id="snapshot-read-title" x="1159" y="1107.76" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#172B43" text-anchor="start">
-    <tspan x="1159" dy="0">Read saved investigation</tspan>
+    <tspan x="1159" dy="0">Browse / open saved reports</tspan>
   </text>
   <text id="snapshot-read-body" x="1159" y="1133.74" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="1159" dy="0">GET /investigations/{id}</tspan>
+    <tspan x="1159" dy="0">GET /investigations · GET /{id}</tspan>
   </text>
   <path id="report-to-storage" d="M 1297 805 L 1297 930" fill="none" stroke="#15805D" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-green)" />
   <text id="report-save-label" x="1308" y="848.74" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#15805D" text-anchor="start">
@@ -369,6 +369,6 @@
     <tspan x="1308" dy="0">load</tspan>
   </text>
   <text id="storage-limits" x="70" y="1186.08" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="70" dy="0">No DB session during collection or LLM calls. Workflow commits before the ID header. Optional DB; history UI is a later step.</tspan>
+    <tspan x="70" dy="0">No DB session during collection or LLM calls. ID follows commit. History reads use cursor pagination; no model calls.</tspan>
   </text>
 </svg>

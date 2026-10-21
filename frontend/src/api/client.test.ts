@@ -56,7 +56,7 @@ describe("investigation API contract", () => {
       { ...request, service: " order-service ", description: "  Timeout  " },
       signal,
     );
-    expect(result.evidence).toEqual([evidence]);
+    expect(result.report.evidence).toEqual([evidence]);
     expect(fetchMock).toHaveBeenCalledWith("/api/investigations", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -194,8 +194,8 @@ describe("investigation API contract", () => {
   it("preserves evidence when HTTP 200 reports that LLM analysis failed", async () => {
     fetchMock.mockResolvedValue(Response.json(report("failed")));
     const result = await createInvestigation(request, signal);
-    expect(result.analysis_status).toBe("failed");
-    expect(result.evidence).toEqual([evidence]);
+    expect(result.report.analysis_status).toBe("failed");
+    expect(result.report.evidence).toEqual([evidence]);
   });
 
   it("rejects invalid input before issuing an HTTP request", async () => {
@@ -214,4 +214,15 @@ describe("investigation API contract", () => {
     expect(reportSchema.safeParse({ ...report(), unexpected: true }).success).toBe(false);
     expect(requestSchema.safeParse({ ...request, unexpected: true }).success).toBe(false);
   });
+});
+
+it("captures a committed snapshot UUID without losing a report when the header is absent or malformed", async () => {
+  for (const rawId of [null, "not-a-uuid", "d9048d0d-669e-45b6-a199-a37db5d55a95"]) {
+    fetchMock.mockResolvedValue(
+      Response.json(report(), { headers: rawId ? { "X-Investigation-ID": rawId } : {} }),
+    );
+    const result = await createInvestigation(request, signal);
+    expect(result.report).toEqual(report());
+    expect(result.id).toBe(rawId?.startsWith("d904") ? rawId : null);
+  }
 });

@@ -1,12 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, createInvestigation } from "../../api/client";
-import {
-  reportSchema,
-  type InvestigationReport,
-  type InvestigationRequest,
-} from "../../api/contracts";
+import { ApiError, createInvestigation, type CreatedInvestigation } from "../../api/client";
+import { reportSchema, type InvestigationRequest } from "../../api/contracts";
 import { useInvestigation } from "./useInvestigation";
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -31,11 +27,16 @@ const report = reportSchema.parse({
 const createMock = vi.mocked(createInvestigation);
 
 function deferred() {
-  let resolve!: (value: InvestigationReport) => void;
-  const promise = new Promise<InvestigationReport>((complete) => {
-    resolve = complete;
+  let complete!: (value: CreatedInvestigation) => void;
+  const promise = new Promise<CreatedInvestigation>((resolve) => {
+    complete = resolve;
   });
-  return { promise, resolve };
+  return {
+    promise,
+    resolve: (report: CreatedInvestigation["report"]) => {
+      complete({ report, id: null });
+    },
+  };
 }
 
 beforeEach(() => {
@@ -97,7 +98,7 @@ describe("useInvestigation request lifecycle", () => {
   it("retains the last successful result through pending requests, cancellation and failure", async () => {
     const pending = deferred();
     createMock
-      .mockResolvedValueOnce(report)
+      .mockResolvedValueOnce({ report, id: null })
       .mockReturnValueOnce(pending.promise)
       .mockRejectedValueOnce(new ApiError("Could not connect to the investigator API."));
     const { result } = renderHook(useInvestigation);
@@ -106,7 +107,7 @@ describe("useInvestigation request lifecycle", () => {
       await result.current.submit(request);
     });
     const previous = result.current.lastResult;
-    expect(previous).toEqual({ request, report });
+    expect(previous).toEqual({ request, report, id: null });
 
     act(() => {
       void result.current.submit({ ...request, description: "Second investigation" });
@@ -138,7 +139,7 @@ describe("useInvestigation request lifecycle", () => {
     const pending = deferred();
     const newerRequest = { ...request, description: "Updated investigation" };
     const newerReport = { ...report, summary: "New investigation report." };
-    createMock.mockResolvedValueOnce(report).mockReturnValueOnce(pending.promise);
+    createMock.mockResolvedValueOnce({ report, id: null }).mockReturnValueOnce(pending.promise);
     const { result } = renderHook(useInvestigation);
     await act(async () => {
       await result.current.submit(request);
@@ -153,7 +154,11 @@ describe("useInvestigation request lifecycle", () => {
       await pending.promise;
     });
     expect(result.current.state).toMatchObject({ phase: "success", report: newerReport });
-    expect(result.current.lastResult).toEqual({ request: newerRequest, report: newerReport });
+    expect(result.current.lastResult).toEqual({
+      request: newerRequest,
+      report: newerReport,
+      id: null,
+    });
     expect(result.current.lastResult).not.toBe(previous);
   });
 
@@ -178,7 +183,7 @@ describe("useInvestigation request lifecycle", () => {
     vi.useFakeTimers();
     createMock.mockImplementation(
       (_, signal) =>
-        new Promise<InvestigationReport>((_, reject) => {
+        new Promise<CreatedInvestigation>((_, reject) => {
           signal.addEventListener(
             "abort",
             () => reject(new DOMException("Aborted", "AbortError")),

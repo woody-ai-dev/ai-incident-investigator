@@ -1,0 +1,92 @@
+.title {
+  margin: 44px 0 30px;
+}
+.title p {
+  color: #3164bb;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.title h1 {
+  font-size: clamp(27px, 3vw, 38px);
+  font-weight: 650;
+  letter-spacing: -1.3px;
+  margin-bottom: 12px;
+}
+.title span {
+  color: #68758a;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+.flowPanel {
+  display: flex;
+  min-width: 0;
+}
+@media (min-width: 1280px) {
+  .workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.resultStatus {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #edf3ff;
+  color: #526783;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.placeholder {
+  padding: 34px 20px;
+  text-align: center;
+  border: 1px dashed #dbe2ed;
+  border-radius: 12px;
+  color: #65728a;
+}
+.placeholder svg {
+  width: 35px;
+  margin-bottom: 12px;
+}
+.placeholder h2 {
+  font-size: 16px;
+  color: #394961;
+}
+.placeholder p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.savedLink {
+  color: #526783;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.savedLink a {
+  color: #275dc0;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .title {
+    margin-top: 32px;
+  }
+}

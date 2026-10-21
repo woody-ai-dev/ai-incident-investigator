@@ -1,11 +1,17 @@
-from datetime import UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import ValidationError
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, and_, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_incident_investigator.investigations.history import (
+    HistoryCursor,
+    InvestigationPage,
+    InvestigationQuery,
+    InvestigationSummary,
+)
 from ai_incident_investigator.investigations.ports import StorageError
 from ai_incident_investigator.investigations.records import StoredInvestigation
 from ai_incident_investigator.storage.models import InvestigationRow
@@ -50,11 +56,7 @@ class SqlAlchemyInvestigationStore:
                     return None
 
                 # SQLite tests return naive datetimes; stored timestamps are always UTC.
-                created_at = row.created_at
-                if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=UTC)
-                else:
-                    created_at = created_at.astimezone(UTC)
+                created_at = _utc(row.created_at)
 
                 return StoredInvestigation.model_validate(
                     {
@@ -70,3 +72,58 @@ class SqlAlchemyInvestigationStore:
                 )
         except (SQLAlchemyError, ValidationError) as exc:
             raise StorageError("Investigation could not be loaded") from exc
+
+    def list_investigations(self, query: InvestigationQuery) -> InvestigationPage:
+        # Project small fields only: evidence and full report JSON never enter the list response.
+        statement = select(
+            InvestigationRow.id,
+            InvestigationRow.created_at,
+            InvestigationRow.service,
+            InvestigationRow.environment,
+            InvestigationRow.duration_ms,
+            InvestigationRow.configured_model,
+            InvestigationRow.report_payload["analysis_status"].as_string().label("analysis_status"),
+            InvestigationRow.report_payload["summary"].as_string().label("summary"),
+        )
+        if query.service is not None:
+            statement = statement.where(InvestigationRow.service == query.service)
+        if query.environment is not None:
+            statement = statement.where(InvestigationRow.environment == query.environment)
+        if query.created_from is not None:
+            statement = statement.where(InvestigationRow.created_at >= query.created_from)
+        if query.created_until is not None:
+            statement = statement.where(InvestigationRow.created_at < query.created_until)
+        if query.cursor is not None:
+            cursor = HistoryCursor.decode(query.cursor)
+            statement = statement.where(
+                or_(
+                    InvestigationRow.created_at < cursor.created_at,
+                    and_(
+                        InvestigationRow.created_at == cursor.created_at,
+                        InvestigationRow.id < cursor.id,
+                    ),
+                )
+            )
+        statement = statement.order_by(
+            InvestigationRow.created_at.desc(), InvestigationRow.id.desc()
+        ).limit(query.limit + 1)
+        try:
+            with self._sessions() as session:
+                rows = session.execute(statement).mappings().all()
+                items = [
+                    InvestigationSummary.model_validate(
+                        {**row, "created_at": _utc(row["created_at"])}
+                    )
+                    for row in rows[: query.limit]
+                ]
+            next_cursor = None
+            if len(rows) > query.limit:
+                last = items[-1]
+                next_cursor = HistoryCursor(created_at=last.created_at, id=last.id).encode()
+            return InvestigationPage(items=items, next_cursor=next_cursor)
+        except (SQLAlchemyError, ValidationError) as exc:
+            raise StorageError("Investigation history could not be loaded") from exc
+
+
+def _utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)

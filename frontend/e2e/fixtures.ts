@@ -66,3 +66,25 @@ export const investigationReport: InvestigationReport = {
     "Actuator is a current snapshot outside the incident window.",
   ],
 };
+
+export const savedId = "d9048d0d-669e-45b6-a199-a37db5d55a95";
+export const savedInvestigation = {
+  id: savedId,
+  created_at: "2026-10-20T12:00:00.123456Z",
+  schema_version: 1,
+  duration_ms: 1234,
+  configured_model: "fixture-model",
+  prompt_sha256: "a".repeat(64),
+  request: investigationRequest,
+  report: investigationReport,
+} as const;
+export const historyItem = {
+  id: savedId,
+  created_at: savedInvestigation.created_at,
+  service: investigationRequest.service,
+  environment: investigationRequest.environment,
+  duration_ms: 1234,
+  configured_model: "fixture-model",
+  analysis_status: investigationReport.analysis_status,
+  summary: investigationReport.summary,
+};

@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from ai_incident_investigator.dependencies import (
     get_actuator_collector,
@@ -12,6 +12,7 @@ from ai_incident_investigator.dependencies import (
     get_metrics_collector,
 )
 from ai_incident_investigator.investigations.analysis import Analyzer
+from ai_incident_investigator.investigations.history import InvestigationPage, InvestigationQuery
 from ai_incident_investigator.investigations.ports import InvestigationStore, StorageError
 from ai_incident_investigator.investigations.records import StoredInvestigation
 from ai_incident_investigator.investigations.reports import InvestigationReport
@@ -63,6 +64,22 @@ def create_investigation(
     if execution.investigation_id is not None:
         response.headers["X-Investigation-ID"] = str(execution.investigation_id)
     return execution.report
+
+
+@router.get("", response_model=InvestigationPage, summary="List saved investigations")
+def list_investigations(
+    query: Annotated[InvestigationQuery, Query()],
+    store: Annotated[InvestigationStore | None, Depends(get_investigation_store)],
+) -> InvestigationPage:
+    if store is None:
+        raise HTTPException(status_code=503, detail="Investigation storage is not configured")
+    try:
+        return store.list_investigations(query)
+    except StorageError as exc:
+        logger.warning("Investigation history failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=503, detail="Investigation storage is unavailable"
+        ) from None
 
 
 @router.get(

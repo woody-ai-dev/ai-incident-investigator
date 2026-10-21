@@ -5,6 +5,7 @@ import { SelectField } from "../../components/SelectField";
 import { defaultValues, recentWindow, validateForm, type FormValues } from "./form";
 import { INVESTIGATION_TARGETS } from "./targets";
 import styles from "./InvestigationForm.module.css";
+import controls from "../../components/FormControls.module.css";
 
 type Props = {
   phase: "idle" | "loading" | "success" | "error";
@@ -167,6 +168,7 @@ export function InvestigationForm({ phase, evidenceCount, error, onSubmit, onCan
               <input
                 id={timeField}
                 name={timeField}
+                className={controls.dateTime}
                 type="datetime-local"
                 step={1}
                 required

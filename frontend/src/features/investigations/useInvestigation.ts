@@ -9,6 +9,7 @@ export type InvestigationState =
   | { phase: "error"; error: ApiError };
 
 type InvestigationResult = {
+  id: string | null;
   request: InvestigationRequest;
   report: InvestigationReport;
 };
@@ -43,9 +44,9 @@ export function useInvestigation() {
       controller.abort();
     }, 90_000);
     try {
-      const report = await createInvestigation(request, controller.signal);
+      const { report, id } = await createInvestigation(request, controller.signal);
       if (active.current === controller) {
-        setLastResult({ request, report });
+        setLastResult({ request, report, id });
         setState({ phase: "success", request, report });
       }
     } catch (error: unknown) {

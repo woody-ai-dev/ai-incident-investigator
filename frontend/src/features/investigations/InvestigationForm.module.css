@@ -57,7 +57,6 @@
   font-size: 12px;
   font-weight: 600;
 }
-.field input,
 .field textarea {
   width: 100%;
   border: 1px solid #d7dfeb;
@@ -67,9 +66,6 @@
   color: #243146;
   font-size: 14px;
   font-family: inherit;
-}
-.field input {
-  height: 42px;
 }
 .windowHint {
   margin: 14px 0 0;

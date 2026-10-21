@@ -11,9 +11,9 @@ function text(minimum: number, maximum: number) {
     }, `Use ${minimum}–${maximum} characters.`);
 }
 
-const identifier = text(1, 100);
-const reportText = text(1, 4000);
-const timestamp = z.iso
+export const identifier = text(1, 100);
+export const reportText = text(1, 4000);
+export const timestamp = z.iso
   .datetime({ offset: true })
   .refine(
     (value) => Number(value.slice(0, 4)) >= 1 && Number.isFinite(Date.parse(value)),

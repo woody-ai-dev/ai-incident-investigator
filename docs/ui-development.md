@@ -42,6 +42,9 @@ the form and flow use equal columns and matching card sizes. The last received r
 remains visible while a new investigation runs, fails, or is stopped, with an explicit
 notice when it belongs to the previous request.
 
+The report node is neutral before a request, gets a blue outline while pending, and
+uses a blue fill once a report arrives. Failed or stopped requests leave it neutral;
+a received report can still contain failed LLM analysis or missing evidence.
 The evidence flow animates while a request is pending. It does not represent real-time
 source progress; the API returns the report as a single response. Receiving a report
 also plays a brief signal along the paths containing returned evidence, so fast
@@ -77,6 +80,13 @@ uv run --locked python scripts/check_compose_demo.py \
   --investigator-url http://127.0.0.1:3000/api
 ```
 
+React Router handles `/`, `/investigations`, and `/investigations/:id`. History
+components and cancellable read requests live in `frontend/src/features/history/`;
+`api/history.ts` validates summaries and snapshots with Zod. History reuses `SelectField`
+with optional All entries; options include demo targets, the current result page, and
+selected URL values. Its date controls share `FormControls.module.css` with the main
+investigation form, including normal font weight. See [saved history behavior and API](persistence.md#browse-history-in-the-ui).
+
 Feature-specific UI pieces, including `SourceFlow`, live in
 `frontend/src/features/investigations/`. Form and report styles are kept in separate CSS
 modules; shared selectors and branding remain in `frontend/src/components/`.
@@ -85,7 +95,8 @@ modules; shared selectors and branding remain in `frontend/src/components/`.
 
 The local browser suite uses a production build on port 4173 and fixed API responses. It
 checks evidence navigation, JSON download, failure recovery, floating menus, and
-mouse/keyboard source inspection. The preview does not proxy requests to the
+mouse/keyboard source inspection, history filtering/pagination, saved-link refresh,
+invalid/missing reports, unavailable storage recovery, and mobile overflow. The preview does not proxy requests to the
 investigator; no backend or API key is required for this suite.
 
 From `frontend/`:
@@ -110,6 +121,15 @@ From the repository root:
 ```bash
 docker compose up --build --wait --wait-timeout 180
 npm --prefix frontend run test:e2e:compose
+```
+
+The persistence browser check requires the PostgreSQL overlay and verifies a real
+saved snapshot through Nginx, list filters, a direct page reload, and that browsing
+makes no POST requests:
+
+```bash
+docker compose -f compose.yaml -f compose.persistence.yaml up --build --wait --wait-timeout 180
+npm --prefix frontend run test:e2e:history
 ```
 
 Browser traces and failure screenshots are saved under `frontend/test-results/`. HTML

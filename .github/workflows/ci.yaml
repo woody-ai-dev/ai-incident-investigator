@@ -262,6 +262,10 @@ jobs:
           curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-all-errors --max-time 3 http://127.0.0.1:3000/api/health
           uv run --locked python scripts/check_investigation_storage.py --investigator-url http://127.0.0.1:3000/api
 
+      - name: Test saved investigation history in Chromium
+        working-directory: frontend
+        run: npm run test:e2e:history
+
       - name: Upload Compose browser test artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -270,6 +274,8 @@ jobs:
           path: |
             frontend/playwright-report/compose/
             frontend/test-results/compose/
+            frontend/playwright-report/history/
+            frontend/test-results/history/
           if-no-files-found: ignore
           retention-days: 7
 
