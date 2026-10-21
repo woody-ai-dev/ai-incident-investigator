@@ -12,6 +12,31 @@ env:
   LLM_ENABLED: "false"
 
 jobs:
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out full Git history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan Git history for secrets
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        run: |
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          printf '%s  %s\n' "$GITLEAKS_SHA256" "$archive" | sha256sum --check --strict
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --log-opts="--all" .
+
   storage:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -80,8 +105,24 @@ jobs:
       - name: Check types
         run: uv run --locked mypy
 
-      - name: Run tests
-        run: uv run --locked pytest
+      - name: Run tests with Python coverage
+        run: uv run --locked pytest --cov --cov-report=term --cov-report=xml:data/coverage.xml
+
+      - name: Generate Python coverage badge
+        run: >-
+          uv run --locked python scripts/coverage_badge.py
+          --input data/coverage.xml
+          --output data/coverage-badge/python-coverage.svg
+
+      - name: Upload Python coverage report and badge
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-coverage
+          path: |
+            data/coverage.xml
+            data/coverage-badge/python-coverage.svg
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Evaluate offline investigation scenarios
         run: uv run --locked python scripts/evaluate_investigations.py
@@ -180,8 +221,60 @@ jobs:
           uv run --locked python scripts/check_demo_logs.py
           demo-services/order-service/target/test-logs/timeout.jsonl
 
+  coverage-badge:
+    name: Publish Python coverage badge
+    needs: [checks, secret-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: python-coverage-badge
+      cancel-in-progress: false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download tested coverage artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: python-coverage
+          path: coverage-artifact
+
+      - name: Publish badge to the coverage-badges branch
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          if [ "$(git rev-parse origin/main)" != "$SOURCE_SHA" ]; then
+            echo "::notice::A newer main commit exists; its run will publish coverage."
+            exit 0
+          fi
+
+          badge_dir="$RUNNER_TEMP/coverage-badges"
+          if git show-ref --verify --quiet refs/remotes/origin/coverage-badges; then
+            git worktree add --detach "$badge_dir" origin/coverage-badges
+          else
+            git worktree add --detach "$badge_dir" "$SOURCE_SHA"
+            git -C "$badge_dir" switch --orphan coverage-badges
+          fi
+
+          cp coverage-artifact/coverage-badge/python-coverage.svg "$badge_dir/"
+          git -C "$badge_dir" add python-coverage.svg
+          if git -C "$badge_dir" diff --cached --quiet; then
+            exit 0
+          fi
+          git -C "$badge_dir" \
+            -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "docs: update Python coverage badge"
+          git -C "$badge_dir" push origin HEAD:refs/heads/coverage-badges
+
   docker-demo:
-    needs: [checks, storage, java-demo, frontend]
+    needs: [checks, storage, java-demo, frontend, secret-scan]
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
