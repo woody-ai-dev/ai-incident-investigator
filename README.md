@@ -116,6 +116,34 @@ source collection or LLM calls. Alembic migrations run before application startu
 evaluation runner bypasses this workflow, calls `investigate()` directly, and keeps
 artifacts in files.
 
+### Source collection outcomes
+
+New reports record a collection outcome, evidence count, duration in milliseconds,
+and issues for logs, Prometheus, and Actuator:
+
+| Outcome | Meaning |
+| --- | --- |
+| `collected` | Evidence was collected. |
+| `partial` | Collection coverage is incomplete, even if no evidence was recovered. |
+| `empty` | Collection completed without matching data. |
+| `disabled` | The source is not configured. |
+| `skipped` | Collection does not apply to the requested target or time window. |
+| `error` | Collection failed without usable evidence. |
+| `not_recorded` | The collection outcome was not recorded. |
+
+Collection status describes telemetry retrieval, not application health. A valid
+Actuator `DOWN` response is successfully collected evidence. Snapshot limitations
+remain visible as data gaps without marking successful retrieval as a failure.
+
+Durations measure each collector operation using a monotonic clock, including HTTP
+requests and response validation. Disabled sources have no measured duration.
+Sub-millisecond operations may be recorded as `0 ms`.
+
+These details are preserved in saved snapshots and JSON exports. Older reports remain
+readable and display `Not recorded` without inventing past outcomes or durations.
+The evidence flow displays outcomes after the report response; its pending animation
+does not represent live progress from individual sources.
+
 ## Saved investigations
 
 Enable the optional PostgreSQL store using the

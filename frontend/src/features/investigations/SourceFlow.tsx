@@ -1,6 +1,11 @@
 import { useId, useRef, useState } from "react";
 import type { InvestigationReport } from "../../api/contracts";
 import styles from "./SourceFlow.module.css";
+import {
+  collectionEvidenceLabel,
+  collectionSummary,
+  evidenceCount,
+} from "./collectionPresentation";
 
 interface SourceFlowProps {
   phase: "idle" | "loading" | "success" | "error";
@@ -44,10 +49,6 @@ const analysisLabels = {
   failed: "LLM failed",
 };
 
-function evidenceCount(count: number) {
-  return count === 0 ? "No evidence" : `${count} evidence item${count === 1 ? "" : "s"}`;
-}
-
 export function SourceFlow({ phase, report }: SourceFlowProps) {
   const captionId = useId();
   const [hovered, setHovered] = useState<Source | null>(null);
@@ -64,7 +65,13 @@ export function SourceFlow({ phase, report }: SourceFlowProps) {
     phase === "loading" ? "Awaiting report" : phase === "error" ? "No report" : "Not requested";
   const counts = sources.map((source) => {
     const count = current?.evidence.filter((item) => item.source === source.source).length ?? 0;
-    return { ...source, count, label: current ? evidenceCount(count) : pending };
+    const collection = current?.source_collections?.find((item) => item.source === source.source);
+    return {
+      ...source,
+      count,
+      collection,
+      label: current ? collectionEvidenceLabel(collection, count) : pending,
+    };
   });
   const signalPaths = paths
     .map((path, index) => ({
@@ -171,6 +178,7 @@ export function SourceFlow({ phase, report }: SourceFlowProps) {
               cy={item.y + 20}
               r="3"
               className={styles.dot}
+              data-collection-status={item.collection?.status}
               data-empty={Boolean(current) && item.count === 0}
             />
             <text x="46" y={item.y + 24} className={styles.title}>
@@ -220,7 +228,7 @@ export function SourceFlow({ phase, report }: SourceFlowProps) {
               key={item.source}
               type="button"
               className={styles.sourceControl}
-              aria-label={`${item.name}: ${item.label}. Show source details.`}
+              aria-label={`${item.name}: ${item.label}. ${current ? `${collectionSummary(item.collection)}. ` : ""}Show source details.`}
               aria-describedby={`${captionId}-${item.source}`}
               data-active={active === item.source}
               data-focus-visible={focused?.source === item.source && focused.keyboard}
@@ -247,6 +255,9 @@ export function SourceFlow({ phase, report }: SourceFlowProps) {
               }}
             >
               <strong>{item.name}:</strong> {item.label}
+              <span className={styles.collectionMeta} data-status={item.collection?.status}>
+                {current ? collectionSummary(item.collection) : "—"}
+              </span>
             </button>
           ))}
         </p>

@@ -72,8 +72,68 @@ class RecommendedCheck(ReportModel):
     reason: ReportText
 
 
+class CollectionStatus(StrEnum):
+    COLLECTED = "collected"
+    PARTIAL = "partial"
+    EMPTY = "empty"
+    DISABLED = "disabled"
+    SKIPPED = "skipped"
+    ERROR = "error"
+    NOT_RECORDED = "not_recorded"
+
+
+class SourceCollection(ReportModel):
+    source: EvidenceSource
+    status: CollectionStatus
+    evidence_count: int = Field(ge=0)
+    duration_ms: int | None = Field(default=None, ge=0)
+    issues: list[ReportText] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_outcome(self) -> Self:
+        no_evidence = {
+            CollectionStatus.EMPTY,
+            CollectionStatus.DISABLED,
+            CollectionStatus.SKIPPED,
+            CollectionStatus.ERROR,
+        }
+
+        if self.status in no_evidence and self.evidence_count != 0:
+            raise ValueError("This collection status cannot contain evidence")
+
+        if self.status == CollectionStatus.COLLECTED and self.evidence_count == 0:
+            raise ValueError("Collected status requires evidence")
+
+        if self.status == CollectionStatus.DISABLED and self.duration_ms is not None:
+            raise ValueError("Disabled collection must not have a measured duration")
+
+        if self.status not in {CollectionStatus.DISABLED, CollectionStatus.NOT_RECORDED}:
+            if self.duration_ms is None:
+                raise ValueError("Executed collection requires duration_ms")
+
+        if (
+            self.status
+            in {
+                CollectionStatus.PARTIAL,
+                CollectionStatus.DISABLED,
+                CollectionStatus.SKIPPED,
+                CollectionStatus.ERROR,
+            }
+            and not self.issues
+        ):
+            raise ValueError("Incomplete or unavailable collection requires an explanation")
+
+        return self
+
+
 class InvestigationReport(ReportModel):
     analysis_status: Literal["not_requested", "skipped", "completed", "failed"] = "not_requested"
+    source_collections: list[SourceCollection] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=4,
+        exclude_if=lambda value: value is None,
+    )
 
     summary: ReportText
     evidence: list[Evidence]
@@ -103,6 +163,18 @@ class InvestigationReport(ReportModel):
 
         if unknown_ids:
             raise ValueError(f"unknown evidence IDs: {', '.join(sorted(unknown_ids))}")
+
+        if self.source_collections is not None:
+            sources = [item.source for item in self.source_collections]
+
+            if len(sources) != len(set(sources)):
+                raise ValueError("Collection sources must be unique")
+
+            for collection in self.source_collections:
+                actual_count = sum(item.source == collection.source for item in self.evidence)
+
+                if collection.evidence_count != actual_count:
+                    raise ValueError("Collection evidence_count must match report evidence")
 
         if not self.evidence and not self.missing_data:
             raise ValueError("missing_data must explain why no evidence is available")

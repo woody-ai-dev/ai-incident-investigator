@@ -79,6 +79,76 @@ test("navigates report evidence and downloads the full JSON export", async ({ pa
   });
 });
 
+for (const width of [1400, 390]) {
+  test(`shows collection outcomes and exports their metadata at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const report: typeof investigationReport = {
+      ...investigationReport,
+      evidence: investigationReport.evidence.filter((item) => item.source !== "metric"),
+      hypotheses: [],
+      source_collections: [
+        {
+          source: "log",
+          status: "partial",
+          evidence_count: 1,
+          duration_ms: 12,
+          issues: ["Log scan byte limit reached; results are incomplete."],
+        },
+        {
+          source: "metric",
+          status: "error",
+          evidence_count: 0,
+          duration_ms: 2400,
+          issues: ["Prometheus queries failed."],
+        },
+        {
+          source: "actuator",
+          status: "collected",
+          evidence_count: 1,
+          duration_ms: 7,
+          issues: ["Actuator provides current snapshots, not historical observations."],
+        },
+      ],
+    };
+    await page.route("**/api/investigations", (route) => route.fulfill({ json: report }));
+    await investigate(page);
+
+    const flow = page.getByRole("region", { name: "Evidence flow" });
+    await expect(flow.getByRole("button", { name: /^Logs: Partial/ })).toContainText(
+      "Partial · 12 ms",
+    );
+    await expect(flow.getByRole("button", { name: /^Metrics: Collection failed/ })).toContainText(
+      "Collection failed · 2,400 ms",
+    );
+    await expect(flow.getByRole("button", { name: /^Actuator:/ })).toContainText(
+      "Collected · 7 ms",
+    );
+    await expect(flow.locator('g[data-source="metric"] circle')).toHaveAttribute(
+      "data-collection-status",
+      "error",
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+
+    const downloaded = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export JSON", exact: true }).click();
+    const download = await downloaded;
+    const exportPath = testInfo.outputPath("collection-report.json");
+    await download.saveAs(exportPath);
+    const exported: unknown = JSON.parse(await readFile(exportPath, "utf8"));
+    expect(exported).toEqual({
+      schema_version: 1,
+      request: investigationRequest,
+      report,
+    });
+    await flow.scrollIntoViewIfNeeded();
+    await flow.screenshot({ path: testInfo.outputPath("source-status.png") });
+  });
+}
+
 test("keeps the last successful report available after a subsequent HTTP 500", async ({ page }) => {
   await investigate(page);
   await page.getByLabel("What happened? Optional").fill("Retry the investigation.");

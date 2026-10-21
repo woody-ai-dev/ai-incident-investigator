@@ -13,7 +13,11 @@ from ai_incident_investigator.investigations.metric_catalog import (
     SCRAPE_SUCCESS,
     MetricDefinition,
 )
-from ai_incident_investigator.investigations.reports import Evidence, EvidenceSource
+from ai_incident_investigator.investigations.reports import (
+    CollectionStatus,
+    Evidence,
+    EvidenceSource,
+)
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.sources.metrics import MetricsCollection
 
@@ -84,9 +88,13 @@ class PrometheusCollector:
 
     def collect(self, request: InvestigationRequest) -> MetricsCollection:
         result = MetricsCollection()
+        failures = 0
+        incomplete = False
+        queries = build_queries(request)
         window = request.end_time - request.start_time
 
         if window > MAX_WINDOW:
+            result.status = CollectionStatus.SKIPPED
             result.issues.append("Prometheus collection skipped: time window exceeds one hour.")
             return result
 
@@ -97,6 +105,7 @@ class PrometheusCollector:
         query_end = query_end.replace(microsecond=query_end.microsecond // 1000 * 1000)
 
         if query_start > query_end:
+            result.status = CollectionStatus.SKIPPED
             result.issues.append(
                 "Prometheus collection skipped: window contains no millisecond evaluation point."
             )
@@ -104,12 +113,17 @@ class PrometheusCollector:
 
         expected_points = int((query_end - query_start).total_seconds() // STEP_SECONDS) + 1
 
-        for query in build_queries(request):
+        for query in queries:
             try:
-                body, reference = self._query(query.expression, query_start, query_end)
+                body, reference = self._query(
+                    query.expression,
+                    query_start,
+                    query_end,
+                )
                 samples = self._samples(body, query.key, request)
 
                 if body.warnings or body.infos:
+                    incomplete = True
                     result.issues.append(
                         f"Prometheus returned annotations for {query.key}; "
                         "query results may be incomplete."
@@ -123,9 +137,11 @@ class PrometheusCollector:
                     continue
 
                 if len(samples) < expected_points:
+                    incomplete = True
                     result.issues.append(
                         f"Prometheus {query.key} returned {len(samples)} of "
-                        f"{expected_points} expected evaluation samples; coverage is incomplete."
+                        f"{expected_points} expected evaluation samples; "
+                        "coverage is incomplete."
                     )
 
                 result.evidence.append(
@@ -134,9 +150,13 @@ class PrometheusCollector:
                         source=EvidenceSource.METRIC,
                         service=request.service,
                         summary=(
-                            f"{query.description}. Evaluation samples={len(samples)}, "
-                            f"min={min(samples):g}, max={max(samples):g}, last={samples[-1]:g}; "
-                            "step=5s, lookback=15s. Evaluation times are not scrape times."
+                            f"{query.description}. "
+                            f"Evaluation samples={len(samples)}, "
+                            f"min={min(samples):g}, "
+                            f"max={max(samples):g}, "
+                            f"last={samples[-1]:g}; "
+                            "step=5s, lookback=15s. "
+                            "Evaluation times are not scrape times."
                         ),
                         reference=reference,
                         start_time=request.start_time,
@@ -144,9 +164,19 @@ class PrometheusCollector:
                     )
                 )
             except (httpx.HTTPError, ValueError):
+                failures += 1
                 result.issues.append(
                     f"Prometheus query failed for {query.key}; metric coverage is incomplete."
                 )
+
+        if failures == len(queries):
+            result.status = CollectionStatus.ERROR
+        elif failures or incomplete or (result.evidence and len(result.evidence) < len(queries)):
+            result.status = CollectionStatus.PARTIAL
+        elif result.evidence:
+            result.status = CollectionStatus.COLLECTED
+        else:
+            result.status = CollectionStatus.EMPTY
 
         return result
 

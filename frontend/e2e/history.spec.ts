@@ -33,11 +33,54 @@ test("opens a saved report after creation, reloads its URL and never repeats ana
   expect(title!.y - (back!.y + back!.height)).toBeGreaterThanOrEqual(16);
   await page.reload();
   await expect(page.getByRole("region", { name: "Saved metadata" })).toContainText(savedId);
+  await expect(page.getByRole("button", { name: /^Logs:/ })).toContainText("Not recorded");
   await page.getByRole("button", { name: "Copy report link" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: /Link copied|Copy the address/ }),
   ).toBeVisible();
   expect(posts).toBe(1);
+});
+
+test("preserves recorded collection durations when reopening a saved report", async ({ page }) => {
+  const report: typeof investigationReport = {
+    ...investigationReport,
+    source_collections: [
+      {
+        source: "log",
+        status: "collected",
+        evidence_count: 1,
+        duration_ms: 42,
+        issues: [],
+      },
+      {
+        source: "metric",
+        status: "partial",
+        evidence_count: 1,
+        duration_ms: 1300,
+        issues: ["Some queries failed."],
+      },
+      {
+        source: "actuator",
+        status: "collected",
+        evidence_count: 1,
+        duration_ms: 7,
+        issues: ["Actuator is a current snapshot."],
+      },
+    ],
+  };
+  let reads = 0;
+  await page.route("**/api/**", (route) => {
+    expect(route.request().method()).toBe("GET");
+    expect(new URL(route.request().url()).pathname).toBe(`/api/investigations/${savedId}`);
+    reads++;
+    return route.fulfill({ json: { ...savedInvestigation, report } });
+  });
+  await page.goto(`/investigations/${savedId}`);
+  await expect(page.getByRole("button", { name: /^Logs:/ })).toContainText("Collected · 42 ms");
+  await expect(page.getByRole("button", { name: /^Metrics:/ })).toContainText("Partial · 1,300 ms");
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Logs:/ })).toContainText("Collected · 42 ms");
+  expect(reads).toBe(2);
 });
 
 test("keeps filters and pages in URLs, restores them on return and validates date ranges", async ({

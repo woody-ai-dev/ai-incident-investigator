@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -8,19 +9,15 @@ from ai_incident_investigator.investigations.evidence_context import (
     validate_hypothesis_time_support,
 )
 from ai_incident_investigator.investigations.reports import (
+    EvidenceSource,
     InvestigationReport,
     RecommendedCheck,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
-from ai_incident_investigator.sources.context import (
-    ActuatorCollection,
-    ActuatorCollector,
-)
+from ai_incident_investigator.sources.collection import collect_source
+from ai_incident_investigator.sources.context import ActuatorCollector
 from ai_incident_investigator.sources.logs import collect_logs
-from ai_incident_investigator.sources.metrics import (
-    MetricsCollection,
-    MetricsCollector,
-)
+from ai_incident_investigator.sources.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +30,27 @@ def investigate(
     actuator_collector: ActuatorCollector | None = None,
     analyzer: Analyzer | None = None,
 ) -> InvestigationReport:
-    logs = collect_logs(log_path, request)
-
-    metrics = (
-        metrics_collector.collect(request)
-        if metrics_collector is not None
-        else MetricsCollection(
-            issues=["Prometheus metrics are unavailable: the metrics source is not connected."]
-        )
+    log_run = collect_source(
+        EvidenceSource.LOG,
+        partial(collect_logs, log_path, request),
+        disabled_reason="The log source is not connected.",
     )
-
-    context = (
-        actuator_collector.collect(request)
-        if actuator_collector is not None
-        else ActuatorCollection(
-            issues=["Actuator context is unavailable: the Actuator source is not connected."]
-        )
+    metric_run = collect_source(
+        EvidenceSource.METRIC,
+        partial(metrics_collector.collect, request) if metrics_collector is not None else None,
+        disabled_reason="Prometheus metrics are unavailable: the metrics source is not connected.",
     )
+    actuator_run = collect_source(
+        EvidenceSource.ACTUATOR,
+        partial(actuator_collector.collect, request) if actuator_collector is not None else None,
+        disabled_reason="Actuator context is unavailable: the Actuator source is not connected.",
+    )
+    logs = log_run.result
+    metrics = metric_run.result
+    context = actuator_run.result
 
     report = InvestigationReport(
+        source_collections=[log_run.metadata, metric_run.metadata, actuator_run.metadata],
         summary=(
             f"Investigated service '{request.service}' "
             f"in environment '{request.environment}'. "
