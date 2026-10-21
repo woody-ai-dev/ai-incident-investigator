@@ -14,7 +14,7 @@ from ai_incident_investigator.investigations.history import (
 )
 from ai_incident_investigator.investigations.ports import StorageError
 from ai_incident_investigator.investigations.records import StoredInvestigation
-from ai_incident_investigator.storage.models import InvestigationRow
+from ai_incident_investigator.storage.models import InvestigationRow, LLMUsageRow
 
 
 class SqlAlchemyInvestigationStore:
@@ -25,6 +25,7 @@ class SqlAlchemyInvestigationStore:
         try:
             with self._sessions() as session:
                 session.execute(select(InvestigationRow).limit(0))
+                session.execute(select(LLMUsageRow).limit(0))
         except SQLAlchemyError as exc:
             raise StorageError("Investigation storage is unavailable or not migrated") from exc
 
@@ -45,6 +46,24 @@ class SqlAlchemyInvestigationStore:
         try:
             with self._sessions.begin() as session:
                 session.add(row)
+                if record.report.llm_usage is not None:
+                    session.flush()
+                    usage = record.report.llm_usage
+                    tokens = usage.tokens
+                    session.add(
+                        LLMUsageRow(
+                            investigation_id=record.id,
+                            started_at=usage.started_at.astimezone(UTC),
+                            duration_ms=usage.duration_ms,
+                            input_tokens=tokens.input_tokens if tokens is not None else None,
+                            cached_input_tokens=tokens.cached_input_tokens
+                            if tokens is not None
+                            else None,
+                            output_tokens=tokens.output_tokens if tokens is not None else None,
+                            total_tokens=tokens.total_tokens if tokens is not None else None,
+                            estimated_cost_usd=usage.estimated_cost_usd,
+                        )
+                    )
         except SQLAlchemyError as exc:
             raise StorageError("Investigation could not be saved") from exc
 

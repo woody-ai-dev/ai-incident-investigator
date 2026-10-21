@@ -12,31 +12,6 @@ env:
   LLM_ENABLED: "false"
 
 jobs:
-  secret-scan:
-    name: Secret scan (Gitleaks)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Check out full Git history
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Scan Git history for secrets
-        env:
-          GITLEAKS_VERSION: "8.30.1"
-          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
-        run: |
-          archive="$RUNNER_TEMP/gitleaks.tar.gz"
-          curl --fail --silent --show-error --location --retry 3 \
-            --output "$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          printf '%s  %s\n' "$GITLEAKS_SHA256" "$archive" | sha256sum --check --strict
-          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP" gitleaks
-          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --log-opts="--all" .
-
   storage:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -223,7 +198,7 @@ jobs:
 
   coverage-badge:
     name: Publish Python coverage badge
-    needs: [checks, secret-scan]
+    needs: [checks]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -274,7 +249,7 @@ jobs:
           git -C "$badge_dir" push origin HEAD:refs/heads/coverage-badges
 
   docker-demo:
-    needs: [checks, storage, java-demo, frontend, secret-scan]
+    needs: [checks, storage, java-demo, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

@@ -226,7 +226,7 @@ def test_openai_adapter(
                 ["Traces unavailable."],
             )
 
-            assert result == analysis
+            assert result.analysis == analysis
         else:
             with pytest.raises(AnalysisError):
                 analyzer.analyze(
@@ -325,7 +325,7 @@ def test_provider_retries_are_bounded(
                 [],
             )
 
-    assert calls == 2
+    assert calls == 1
 
 
 def test_settings_do_not_display_key(monkeypatch: pytest.MonkeyPatch) -> None:

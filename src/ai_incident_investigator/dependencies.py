@@ -32,7 +32,7 @@ def get_analyzer(
         api_key=settings.openai_api_key.get_secret_value(),
         base_url="https://api.openai.com/v1",
         timeout=20.0,
-        max_retries=1,
+        max_retries=0,
     ) as client:
         yield OpenAIAnalyzer(client, settings.openai_model)
 

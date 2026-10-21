@@ -4,6 +4,8 @@ from typing import Annotated, Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ai_incident_investigator.usage.models import LLMUsage
+
 Identifier = Annotated[str, Field(min_length=1, max_length=100)]
 ReportText = Annotated[str, Field(min_length=1, max_length=4000)]
 
@@ -127,6 +129,7 @@ class SourceCollection(ReportModel):
 
 
 class InvestigationReport(ReportModel):
+    llm_usage: LLMUsage | None = Field(default=None, exclude_if=lambda value: value is None)
     analysis_status: Literal["not_requested", "skipped", "completed", "failed"] = "not_requested"
     source_collections: list[SourceCollection] | None = Field(
         default=None,
