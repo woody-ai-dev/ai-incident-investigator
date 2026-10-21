@@ -118,5 +118,10 @@ def test_api_returns_log_evidence(
     assert len(report.evidence) == 1
     assert report.evidence[0].summary == "[ERROR] Payment request timed out."
     assert report.evidence[0].reference == "local-jsonl:line:1"
+    assert report.source_collections is not None
+    assert [item.evidence_count for item in report.source_collections] == [1, 0, 0]
+    assert report.source_collections[0].duration_ms is not None
+    assert report.source_collections[1].duration_ms is None
+    assert "source_collections" in response.json()
     assert report.hypotheses == []
     assert not any("Log file could not be read" in issue for issue in report.missing_data)

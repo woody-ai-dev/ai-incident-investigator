@@ -2,10 +2,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+)
 
-from ai_incident_investigator.investigations.reports import Evidence, EvidenceSource
+from ai_incident_investigator.investigations.reports import (
+    CollectionStatus,
+    Evidence,
+    EvidenceSource,
+)
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
+from ai_incident_investigator.sources.collection import CollectionResult
 
 
 class LogEntry(BaseModel):
@@ -19,22 +31,23 @@ class LogEntry(BaseModel):
 
     @field_validator("timestamp", mode="before")
     @classmethod
-    def parse_timestamp(csl, value: object) -> datetime:
+    def parse_timestamp(cls, value: object) -> datetime:
         if isinstance(value, datetime):
             return value
+
         if isinstance(value, str):
             return datetime.fromisoformat(value)
+
         raise ValueError("timestamp must be an ISO 8601 string or a datetime object")
 
     @field_validator("timestamp")
     @classmethod
-    def normilize_timestamp(cls, value: datetime) -> datetime:
+    def normalize_timestamp(cls, value: datetime) -> datetime:
         return value.astimezone(UTC)
 
 
-class LogCollection(BaseModel):
-    evidence: list[Evidence] = Field(default_factory=list)
-    issues: list[str] = Field(default_factory=list)
+class LogCollection(CollectionResult):
+    pass
 
 
 def collect_logs(
@@ -52,6 +65,8 @@ def collect_logs(
 
     result = LogCollection()
     invalid_lines = 0
+    incomplete = False
+    read_failed = False
     scanned_bytes = 0
     line_number = 0
 
@@ -60,21 +75,26 @@ def collect_logs(
             while True:
                 remaining = max_scan_bytes - scanned_bytes
                 raw_line = stream.readline(min(max_line_bytes, remaining) + 1)
+
                 if not raw_line:
                     break
 
                 line_number += 1
 
                 if len(raw_line) > remaining:
+                    incomplete = True
                     result.issues.append("Log scan byte limit reached; results are incomplete.")
                     break
+
                 if len(raw_line) > max_line_bytes:
+                    incomplete = True
                     result.issues.append(
                         f"Line {line_number} exceeds the byte limit; log scan stopped."
                     )
                     break
 
                 scanned_bytes += len(raw_line)
+
                 if not raw_line.strip():
                     continue
 
@@ -92,6 +112,7 @@ def collect_logs(
                     continue
 
                 if len(result.evidence) == max_evidence:
+                    incomplete = True
                     result.issues.append("Evidence limit reached; matching logs were omitted.")
                     break
 
@@ -106,13 +127,24 @@ def collect_logs(
                     )
                 )
     except OSError:
+        read_failed = True
         result.issues.append("Log file could not be read; log coverage is incomplete.")
 
     if invalid_lines:
         result.issues.append(
             f"Skipped {invalid_lines} invalid log line(s); coverage is incomplete."
         )
+
     if not result.evidence and not result.issues:
         result.issues.append("Log file was read successfully, but no matching records were found.")
+
+    if read_failed:
+        result.status = CollectionStatus.PARTIAL if result.evidence else CollectionStatus.ERROR
+    elif incomplete or invalid_lines:
+        result.status = CollectionStatus.PARTIAL
+    elif result.evidence:
+        result.status = CollectionStatus.COLLECTED
+    else:
+        result.status = CollectionStatus.EMPTY
 
     return result

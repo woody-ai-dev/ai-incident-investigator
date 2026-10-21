@@ -253,3 +253,54 @@ it("distinguishes actual waiting from the finite receipt signal", () => {
   rerender(<SourceFlow phase="error" />);
   expect(container.querySelector("[data-flow-signal]")).not.toBeInTheDocument();
 });
+
+it("shows explicit collection outcomes and measured time without confusing them with LLM status", () => {
+  render(
+    <SourceFlow
+      phase="success"
+      report={{
+        ...report,
+        source_collections: [
+          {
+            source: "log",
+            status: "partial",
+            evidence_count: 2,
+            duration_ms: 12,
+            issues: ["Log scan limit reached"],
+          },
+          {
+            source: "metric",
+            status: "error",
+            evidence_count: 0,
+            duration_ms: 3000,
+            issues: ["Prometheus query failed"],
+          },
+          {
+            source: "actuator",
+            status: "collected",
+            evidence_count: 1,
+            duration_ms: 5,
+            issues: ["Current snapshot, not historical health"],
+          },
+        ],
+      }}
+    />,
+  );
+  expect(screen.getByRole("button", { name: /^Logs: Partial · 2 items/ })).toHaveTextContent(
+    "Partial · 12 ms",
+  );
+  expect(screen.getByRole("button", { name: /^Metrics: Collection failed/ })).toHaveTextContent(
+    /3[,.\s]?000 ms/,
+  );
+  expect(screen.getByRole("button", { name: /^Actuator: 1 evidence item/ })).toHaveTextContent(
+    "Collected · 5 ms",
+  );
+  expect(screen.getByRole("img")).toHaveAccessibleName(/LLM failed/);
+});
+
+it("does not fabricate outcomes or durations for a legacy report", () => {
+  render(<SourceFlow phase="success" report={report} />);
+  const logs = screen.getByRole("button", { name: /^Logs: 2 evidence items/ });
+  expect(logs).toHaveTextContent("Not recorded");
+  expect(logs).not.toHaveTextContent(/\d+ ms/);
+});

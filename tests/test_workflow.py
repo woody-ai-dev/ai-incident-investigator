@@ -8,7 +8,7 @@ import pytest
 from ai_incident_investigator.investigations.analysis import Analysis, AnalysisError
 from ai_incident_investigator.investigations.ports import StorageError
 from ai_incident_investigator.investigations.records import StoredInvestigation
-from ai_incident_investigator.investigations.reports import Evidence
+from ai_incident_investigator.investigations.reports import CollectionStatus, Evidence
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.investigations.workflow import (
     AnalysisConfiguration,
@@ -116,6 +116,14 @@ def test_workflow_saves_only_after_analysis_and_preserves_result(
     assert saved.report == execution.report
     assert saved.report.analysis_status == ("failed" if analysis_fails else "completed")
     assert len(saved.report.evidence) == 1
+    assert saved.report.source_collections is not None
+    assert [item.status for item in saved.report.source_collections] == [
+        CollectionStatus.COLLECTED,
+        CollectionStatus.DISABLED,
+        CollectionStatus.DISABLED,
+    ]
+    assert saved.report.source_collections[0].duration_ms is not None
+    assert saved.report.source_collections[1].duration_ms is None
     assert saved.configured_model == "test-model"
     assert saved.prompt_sha256 == "a" * 64
     assert saved.duration_ms >= 0

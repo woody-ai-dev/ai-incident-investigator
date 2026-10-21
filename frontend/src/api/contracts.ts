@@ -75,11 +75,63 @@ const evidenceSchema = z
     }
   });
 
+const collectionStatusSchema = z.enum([
+  "collected",
+  "partial",
+  "empty",
+  "disabled",
+  "skipped",
+  "error",
+  "not_recorded",
+]);
+
+const sourceCollectionSchema = z
+  .strictObject({
+    source: evidenceSourceSchema,
+    status: collectionStatusSchema,
+    evidence_count: z.number().int().nonnegative(),
+    duration_ms: z.number().int().nonnegative().nullable(),
+    issues: z.array(reportText),
+  })
+  .superRefine((collection, context) => {
+    if (
+      ["empty", "disabled", "skipped", "error"].includes(collection.status) &&
+      collection.evidence_count !== 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "This collection status cannot contain evidence.",
+      });
+    }
+    if (collection.status === "collected" && collection.evidence_count === 0) {
+      context.addIssue({ code: "custom", message: "Collected status requires evidence." });
+    }
+    if (collection.status === "disabled" && collection.duration_ms !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "Disabled collection must not have a duration.",
+      });
+    }
+    if (
+      !["disabled", "not_recorded"].includes(collection.status) &&
+      collection.duration_ms === null
+    ) {
+      context.addIssue({ code: "custom", message: "Executed collection requires a duration." });
+    }
+    if (
+      ["partial", "disabled", "skipped", "error"].includes(collection.status) &&
+      collection.issues.length === 0
+    ) {
+      context.addIssue({ code: "custom", message: "Incomplete collection needs an explanation." });
+    }
+  });
+
 export const reportSchema = z
   .strictObject({
     analysis_status: z
       .enum(["not_requested", "skipped", "completed", "failed"])
       .default("not_requested"),
+    source_collections: z.array(sourceCollectionSchema).min(1).max(4).optional(),
     summary: reportText,
     evidence: z.array(evidenceSchema),
     findings: z.array(
@@ -117,6 +169,26 @@ export const reportSchema = z
     if (referenced.some((id) => !ids.has(id))) {
       context.addIssue({ code: "custom", message: "Report references unknown evidence." });
     }
+    if (report.source_collections) {
+      const sources = report.source_collections.map((item) => item.source);
+      if (new Set(sources).size !== sources.length) {
+        context.addIssue({
+          code: "custom",
+          path: ["source_collections"],
+          message: "Collection sources must be unique.",
+        });
+      }
+      for (const collection of report.source_collections) {
+        const count = report.evidence.filter((item) => item.source === collection.source).length;
+        if (collection.evidence_count !== count) {
+          context.addIssue({
+            code: "custom",
+            path: ["source_collections"],
+            message: "Collection count does not match report evidence.",
+          });
+        }
+      }
+    }
     if (report.evidence.length === 0 && report.missing_data.length === 0) {
       context.addIssue({
         code: "custom",
@@ -130,3 +202,6 @@ export type InvestigationRequest = z.infer<typeof requestSchema>;
 export type InvestigationReport = z.infer<typeof reportSchema>;
 export type Evidence = z.infer<typeof evidenceSchema>;
 export type EvidenceSource = z.infer<typeof evidenceSourceSchema>;
+
+export type CollectionStatus = z.infer<typeof collectionStatusSchema>;
+export type SourceCollection = z.infer<typeof sourceCollectionSchema>;

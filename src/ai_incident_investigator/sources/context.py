@@ -1,14 +1,11 @@
 from typing import Protocol
 
-from pydantic import BaseModel, Field
-
-from ai_incident_investigator.investigations.reports import Evidence
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
+from ai_incident_investigator.sources.collection import CollectionResult
 
 
-class ActuatorCollection(BaseModel):
-    evidence: list[Evidence] = Field(default_factory=list)
-    issues: list[str] = Field(default_factory=list)
+class ActuatorCollection(CollectionResult):
+    pass
 
 
 class ActuatorCollector(Protocol):

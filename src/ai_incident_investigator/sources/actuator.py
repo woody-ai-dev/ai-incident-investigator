@@ -5,7 +5,11 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from ai_incident_investigator.investigations.reports import Evidence, EvidenceSource
+from ai_incident_investigator.investigations.reports import (
+    CollectionStatus,
+    Evidence,
+    EvidenceSource,
+)
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.settings import ActuatorTarget
 from ai_incident_investigator.sources.context import ActuatorCollection
@@ -61,6 +65,7 @@ class HttpActuatorCollector:
             self.target.service,
             self.target.environment,
         ):
+            result.status = CollectionStatus.SKIPPED
             result.issues.append(
                 "Actuator collection skipped: no target is configured for this service/environment."
             )
@@ -70,9 +75,11 @@ class HttpActuatorCollector:
             info_snapshot = self._read("info", allowed_statuses=(200,))
             info = InfoResponse.model_validate_json(info_snapshot.payload)
         except (httpx.HTTPError, ValueError):
+            result.status = CollectionStatus.ERROR
             result.issues.append(
                 "Actuator info could not be collected or validated; "
-                "health collection was skipped because target identity could not be verified."
+                "health collection was skipped because target identity "
+                "could not be verified."
             )
             return result
 
@@ -80,21 +87,25 @@ class HttpActuatorCollector:
             request.service,
             request.environment,
         ):
+            result.status = CollectionStatus.ERROR
             result.issues.append(
-                "Actuator identity does not match the requested service/environment; "
-                "context was rejected."
+                "Actuator identity does not match the requested "
+                "service/environment; context was rejected."
             )
             return result
 
         result.evidence.append(
             self._evidence(
                 "info",
-                f"name={info.app.name}, environment={info.app.environment}, "
+                f"name={info.app.name}, "
+                f"environment={info.app.environment}, "
                 f"version={info.app.version}",
                 info_snapshot,
                 request,
             )
         )
+
+        result.status = CollectionStatus.COLLECTED
 
         try:
             health_snapshot = self._read(
@@ -118,6 +129,7 @@ class HttpActuatorCollector:
                 )
             )
         except (httpx.HTTPError, ValueError):
+            result.status = CollectionStatus.PARTIAL
             result.issues.append("Actuator health could not be collected or validated.")
 
         result.issues.append(SNAPSHOT_LIMITATION)
