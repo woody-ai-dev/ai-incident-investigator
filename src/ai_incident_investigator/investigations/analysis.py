@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Protocol
 
 from pydantic import Field
@@ -12,6 +13,7 @@ from ai_incident_investigator.investigations.reports import (
     ReportText,
 )
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
+from ai_incident_investigator.usage.models import LLMUsage
 
 
 class Analysis(ReportModel):
@@ -21,8 +23,18 @@ class Analysis(ReportModel):
     recommended_checks: list[RecommendedCheck] = Field(min_length=1, max_length=10)
 
 
+@dataclass(frozen=True)
+class AnalysisResult:
+    analysis: Analysis
+    usage: LLMUsage
+
+
 class AnalysisError(RuntimeError):
     """The analyzer could not produce a usable result."""
+
+    def __init__(self, message: str, *, usage: LLMUsage | None = None) -> None:
+        super().__init__(message)
+        self.usage = usage
 
 
 class Analyzer(Protocol):
@@ -31,4 +43,4 @@ class Analyzer(Protocol):
         request: InvestigationRequest,
         evidence: Sequence[Evidence],
         missing_data: Sequence[str],
-    ) -> Analysis: ...
+    ) -> Analysis | AnalysisResult: ...

@@ -19,7 +19,12 @@ from ai_incident_investigator.evaluation.runner import (
     RecordedMetricsCollector,
     run_scenario,
 )
-from ai_incident_investigator.investigations.analysis import Analysis, AnalysisError, Analyzer
+from ai_incident_investigator.investigations.analysis import (
+    Analysis,
+    AnalysisError,
+    AnalysisResult,
+    Analyzer,
+)
 from ai_incident_investigator.investigations.reports import Evidence, InvestigationReport
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.investigations.service import investigate
@@ -77,7 +82,7 @@ class CountingAnalyzer:
         request: InvestigationRequest,
         evidence: Sequence[Evidence],
         missing_data: Sequence[str],
-    ) -> Analysis:
+    ) -> Analysis | AnalysisResult:
         if self.calls:
             raise AnalysisError("Only one analysis attempt is allowed per case")
 

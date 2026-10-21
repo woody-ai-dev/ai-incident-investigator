@@ -5,14 +5,16 @@ account, Codecov account, OpenAI API key, or manually created access token.
 
 ## Secret scanning
 
-The `Secret scan (Gitleaks)` job runs on pull requests and pushes to `main`. It checks
+The **Security scan** workflow (`.github/workflows/security-scan.yaml`) runs the
+`Secret scan (Gitleaks)` job on pull requests and pushes to `main`. It checks
 all fetched Git history, including secrets removed by later commits. Checkout fetches
 the full history and does not persist repository credentials in the scanner job.
 
 The workflow downloads Gitleaks CLI 8.30.1 and verifies the Linux archive against a
 pinned SHA-256 before execution. It uses the free CLI directly. Findings are redacted;
 the job fails when a leak or scanner error is detected. No secret-bearing report is
-uploaded as an artifact. Docker demo checks wait for successful secret scanning.
+uploaded as an artifact. Security scanning runs independently of build and demo CI;
+require both workflows before merging. The scanner job name remains unchanged.
 
 To scan locally after installing Gitleaks:
 
@@ -23,6 +25,10 @@ gitleaks git --no-banner --redact --log-opts="--all" .
 If a real credential is found, revoke or rotate it. Removing the current file alone
 does not remove the credential from Git history. Only verified dummy values should
 receive narrowly scoped exceptions; there is no blanket ignore list in this project.
+
+The README Security scan badge reflects only this workflow, filtered to pushes on
+`main`. It becomes available after the first run of the new workflow on `main`.
+It reports secret-scan status, not dependency vulnerability coverage or a security audit.
 
 ## Python coverage
 

@@ -3,6 +3,7 @@
 [![CI (main)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml/badge.svg?branch=main&event=push)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/ci.yaml?query=branch%3Amain)
 [![Python coverage](https://raw.githubusercontent.com/woody-ai-dev/ai-incident-investigator/coverage-badges/python-coverage.svg)](docs/ci-security.md#python-coverage)
 [![Release](https://img.shields.io/github/v/release/woody-ai-dev/ai-incident-investigator)](https://github.com/woody-ai-dev/ai-incident-investigator/releases/latest)
+[![Security scan](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/security-scan.yaml/badge.svg?branch=main&event=push)](https://github.com/woody-ai-dev/ai-incident-investigator/actions/workflows/security-scan.yaml?query=branch%3Amain)
 
 An incident investigation assistant that helps on-call engineers and SREs turn service
 telemetry into evidence-backed reports.
@@ -19,8 +20,8 @@ remediation is not implemented.
 | --- | --- |
 | Backend | Python 3.12+, FastAPI, Pydantic, HTTPX, Uvicorn |
 | Persistence | PostgreSQL 17, SQLAlchemy 2, Psycopg 3, Alembic |
-| AI analysis | OpenAI Python SDK, Responses API, structured outputs |
-| Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod |
+| AI analysis | OpenAI Python SDK, Responses API, structured outputs, provider usage |
+| Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod, CSS chart animations |
 | Telemetry | JSONL logs, Prometheus, Spring Boot Actuator, Micrometer |
 | Demo service | Java 25, Spring Boot 4, Maven Wrapper |
 | Testing | pytest, pytest-cov, Vitest, Testing Library, Playwright, JUnit |
@@ -50,6 +51,11 @@ Only implemented technologies are listed here. Planned capabilities are describe
 - Partial collection with explicit reporting of unavailable data and limits.
 - Optional structured LLM analysis with evidence-reference validation.
 - Evidence-preserving fallback when analysis fails or is rejected.
+- Provider-reported token accounting, model-call duration, and versioned USD price snapshots.
+- A Usage page with 7/30-day trends and the five largest analyses by tokens, cost, or time.
+  Charts animate on entry and respect reduced-motion preferences. Unknown usage remains
+  unknown; recorded totals cover saved application calls, including rejected answers, rather
+  than the provider invoice. Older snapshots are not assigned fabricated usage.
 - A Spring Boot demo service with normal and payment-timeout modes.
 - A React and TypeScript UI for submitting investigations and reviewing reports.
 - Docker images and a four-service Docker Compose demo, with an optional
@@ -166,6 +172,20 @@ snapshot. These reads never collect sources or call a model. Without PostgreSQL,
 investigations still work and the history page explains that storage is unavailable.
 See [history and API details](docs/persistence.md#browse-history-in-the-ui).
 
+## Model usage
+
+With persistence enabled, open **Usage** in the sidebar for 7/30-day token and
+estimated-cost trends, plus the five largest analyses ranked by tokens, cost, or time.
+`GET /usage?days=7&sort=tokens` returns the same read-only UTC aggregates.
+
+New saved reports preserve provider-reported usage, the actual response model, call
+duration, and a versioned price snapshot. Cached input is a subset of input tokens;
+it is charged at its own rate without being counted twice. Standard-tier text pricing
+currently covers `gpt-4.1-mini-2025-04-14`. Unknown models, tiers, or missing usage
+remain unpriced. Failed or rejected answers retain any usage reported by the provider.
+Older investigations have no invented usage. See the
+[live accounting validation](docs/usage-validation.md) for a real-call check.
+
 ## Quick start with Docker Compose
 
 Requirements:
@@ -230,10 +250,12 @@ src/ai_incident_investigator/
     schemas.py, reports.py         Request and report contracts
   sources/                         JSONL, Prometheus, and Actuator adapters
   llm/                             OpenAI adapter, prompts, response schema
+  usage/                           Token/pricing contracts and usage HTTP API
   storage/                         SQLAlchemy models, engine, repository adapter
 frontend/src/
   components/                      Shared controls and branding
   features/investigations/          Form, SourceFlow, report, hooks, styles, tests
+  features/usage/                   Usage overview, daily chart, largest analyses
 migrations/                        Alembic schema migrations
 alembic.ini                        Migration environment configuration
 tests/                             Python contracts, core, source, and API tests

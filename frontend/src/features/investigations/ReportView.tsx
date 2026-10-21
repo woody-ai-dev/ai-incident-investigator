@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Evidence, InvestigationReport, InvestigationRequest } from "../../api/contracts";
 import styles from "./ReportView.module.css";
+import { LLMUsageSummary } from "../usage/LLMUsageSummary";
 
 const analysisLabels = {
   not_requested: "AI analysis disabled",
@@ -162,6 +163,7 @@ export function ReportView({ report, request }: Props) {
         </p>
       )}
       <p className={styles.summary}>{report.summary}</p>
+      <LLMUsageSummary usage={report.llm_usage} />
       <nav className={styles.views} aria-label="Report sections">
         {(["evidence", "analysis", "gaps"] as const).map((item) => (
           <button

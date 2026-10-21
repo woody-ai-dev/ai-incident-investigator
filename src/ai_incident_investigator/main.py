@@ -10,6 +10,8 @@ from ai_incident_investigator.investigations.router import router as investigati
 from ai_incident_investigator.settings import get_settings
 from ai_incident_investigator.storage.database import create_database_engine
 from ai_incident_investigator.storage.repository import SqlAlchemyInvestigationStore
+from ai_incident_investigator.storage.usage import SqlAlchemyUsageReader
+from ai_incident_investigator.usage.router import router as usage_router
 
 
 @asynccontextmanager
@@ -17,6 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     engine: Engine | None = None
     app.state.investigation_store = None
+    app.state.usage_reader = None
 
     try:
         if settings.database_url is not None:
@@ -29,9 +32,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     "Investigation database is unavailable; check connectivity and apply migrations"
                 ) from None
             app.state.investigation_store = store
+            app.state.usage_reader = SqlAlchemyUsageReader(engine)
         yield
     finally:
         app.state.investigation_store = None
+        app.state.usage_reader = None
         if engine is not None:
             await to_thread(engine.dispose)
 
@@ -47,6 +52,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     application.include_router(investigations_router)
+    application.include_router(usage_router)
     application.add_api_route("/health", health, methods=["GET"], tags=["health"])
     return application
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { llmUsageSchema } from "./llmUsage";
 
 function text(minimum: number, maximum: number) {
   return z
@@ -128,6 +129,7 @@ const sourceCollectionSchema = z
 
 export const reportSchema = z
   .strictObject({
+    llm_usage: llmUsageSchema.optional(),
     analysis_status: z
       .enum(["not_requested", "skipped", "completed", "failed"])
       .default("not_requested"),

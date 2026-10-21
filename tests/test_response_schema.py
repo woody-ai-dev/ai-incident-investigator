@@ -219,7 +219,7 @@ def test_adapter_sends_native_enums_and_returns_base_analysis(
                 analyzer.analyze(request_model, evidence, [])
         else:
             result = analyzer.analyze(request_model, evidence, [])
-            assert type(result) is Analysis
-            assert result == Analysis.model_validate(analysis_payload)
+            assert type(result.analysis) is Analysis
+            assert result.analysis == Analysis.model_validate(analysis_payload)
 
     assert calls == 1
