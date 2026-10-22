@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "payment-timeout",
+      "query": "An order request logged a simulated payment timeout.",
+      "service": "order-service",
+      "environment": "local",
+      "relevant_document_ids": ["payment-timeout"]
+    },
+    {
+      "id": "heap-without-baseline",
+      "query": "Heap minimum, maximum, and last values are available without a baseline.",
+      "service": "order-service",
+      "environment": "local",
+      "relevant_document_ids": ["heap-investigation"]
+    },
+    {
+      "id": "partial-source-results",
+      "query": "Logs were collected but Prometheus collection failed.",
+      "service": "order-service",
+      "environment": "local",
+      "relevant_document_ids": ["partial-collection"]
+    },
+    {
+      "id": "wrong-service",
+      "query": "A payment timeout occurred.",
+      "service": "inventory-service",
+      "environment": "local",
+      "relevant_document_ids": []
+    },
+    {
+      "id": "wrong-environment",
+      "query": "A payment timeout occurred.",
+      "service": "order-service",
+      "environment": "production",
+      "relevant_document_ids": []
+    },
+    {
+      "id": "no-relevant-runbook",
+      "query": "A TLS certificate has expired.",
+      "service": "order-service",
+      "environment": "local",
+      "relevant_document_ids": []
+    }
+  ]
+}
