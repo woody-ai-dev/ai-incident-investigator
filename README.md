@@ -8,8 +8,9 @@
 An incident investigation assistant that helps on-call engineers and SREs turn service
 telemetry into evidence-backed reports.
 
-The MVP collects evidence from JSONL logs, Prometheus, and Spring Boot Actuator, and
-optionally uses OpenAI for structured analysis. A Java demo service generates a
+The assistant collects evidence from JSONL logs, Prometheus, and Spring Boot Actuator,
+and optionally uses OpenAI for structured analysis. PostgreSQL adds saved reports,
+investigation history, and token/cost trends. A Java demo service generates a
 reproducible payment-timeout scenario. Reports combine historical log records and metric
 observations with current application identity and health snapshots. Automated
 remediation is not implemented.
@@ -29,8 +30,8 @@ remediation is not implemented.
 | Build and runtime | uv, Docker, Docker Compose, Nginx |
 | CI | GitHub Actions, Gitleaks |
 
-The Python coverage badge is published after the first successful `main` CI run with
-this configuration. See [CI security and coverage setup](docs/ci-security.md).
+The Python coverage badge is updated by successful Python checks on `main`. See
+[CI security and coverage setup](docs/ci-security.md).
 
 Only implemented technologies are listed here. Planned capabilities are described in the
 [roadmap](#roadmap).
@@ -49,7 +50,10 @@ Only implemented technologies are listed here. Planned capabilities are describe
 - Current Actuator info and health snapshots after service/environment identity checks.
 - Snapshot timestamps recorded when each response is retrieved, distinct from the incident window.
 - Partial collection with explicit reporting of unavailable data and limits.
+- Per-source collection outcomes, evidence counts, issues, and measured durations.
 - Optional structured LLM analysis with evidence-reference validation.
+- Short source-attributed model summaries, with detailed findings and recommended
+  checks shown first for completed analysis. Historical summaries remain intact.
 - Evidence-preserving fallback when analysis fails or is rejected.
 - Provider-reported token accounting, model-call duration, and versioned USD price snapshots.
 - A Usage page with 7/30-day trends and the five largest analyses by tokens, cost, or time.
@@ -77,10 +81,15 @@ as JSON.
 
 - [Demo walkthrough and recording](docs/demo.md)
 - [Validation record and real-model evaluation limits](docs/validation/2026-10-16.md)
+- [v0.2.0 verification](docs/validation/2026-10-22-v0.2.0.md)
+- [Release notes for v0.2.0](docs/releases/v0.2.0.md)
 - [Release notes for v0.1.0](docs/releases/v0.1.0.md)
 - [GitHub release guide](docs/releasing.md)
 
 ## Recorded demo
+
+This recording demonstrates **v0.1.0**. Saved history, source collection outcomes,
+and the Usage dashboard were added afterward; use the current guides for those features.
 
 https://github.com/user-attachments/assets/97f5b7a0-0500-4a67-9961-c598e60c685a
 
@@ -97,7 +106,7 @@ See the
 
 ## Architecture
 
-![Current architecture: on-demand investigation, telemetry sources, optional analysis, history and PostgreSQL snapshots](docs/architecture/architecture.svg)
+![v0.2 architecture: on-demand investigation, source outcomes, optional analysis, PostgreSQL history and model usage](docs/architecture/architecture.svg)
 
 [Editable draw.io diagram](docs/architecture/architecture.drawio)
 
@@ -125,6 +134,12 @@ before the response includes `X-Investigation-ID`; no database session is held d
 source collection or LLM calls. Alembic migrations run before application startup. The
 evaluation runner bypasses this workflow, calls `investigate()` directly, and keeps
 artifacts in files.
+
+The OpenAI adapter records provider-reported tokens and call duration, then attaches
+any supported price snapshot. The store saves the report and its normalized usage row
+in one transaction. A separate `UsageReader` port serves UTC aggregates for `GET /usage`;
+history and usage reads never invoke collectors or a model. Unknown usage and prices
+remain unknown.
 
 ### Source collection outcomes
 
@@ -255,6 +270,7 @@ src/ai_incident_investigator/
 frontend/src/
   components/                      Shared controls and branding
   features/investigations/          Form, SourceFlow, report, hooks, styles, tests
+  features/history/                 Filtered history, saved reports, read hooks
   features/usage/                   Usage overview, daily chart, largest analyses
 migrations/                        Alembic schema migrations
 alembic.ini                        Migration environment configuration
@@ -269,6 +285,7 @@ compose.persistence.yaml           Optional PostgreSQL and migration service
 compose.llm.yaml                   Opt-in live model override
 Dockerfile, .dockerignore           Python image and build context
 .github/workflows/ci.yaml           Python, storage, Java, frontend, Compose checks
+.github/workflows/security-scan.yaml Gitleaks scan of Git history
 observability/prometheus/           Prometheus scrape configuration
 demo-services/order-service/       Java demo and container image
 examples/logs.jsonl                 Synthetic example logs
@@ -360,10 +377,14 @@ to point to the matching guide.
 
 ## Roadmap
 
-Next steps include more detailed source statuses and collection timing, token/cost
-accounting, and broader evaluation. Metric interpretation still needs repeated checks
-on unseen incidents;
-current validation records document remaining errors.
+The v0.2 feature set includes persistent investigation snapshots, filtered history,
+source outcomes and timing, token/cost accounting, and clearer reports. See the
+[v0.2.0 release notes](docs/releases/v0.2.0.md) for scope and upgrade instructions.
+
+Next work should broaden evaluation on unseen incidents and improve remaining metric
+interpretation errors. Recorded technical passes are not a production-accuracy claim.
+Background jobs and idempotent submission would let the API handle longer investigations
+without repeating billable work when a client retries.
 
 Later work may add centralized telemetry, traces, background jobs, alert-triggered
 investigations, and retrieval of operational knowledge. A remediation stage would

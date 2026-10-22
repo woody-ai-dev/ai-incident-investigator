@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,12 @@ from ai_incident_investigator.dependencies import get_metrics_collector
 from ai_incident_investigator.investigations.schemas import InvestigationRequest
 from ai_incident_investigator.main import create_app
 from ai_incident_investigator.sources.metrics import MetricsCollection
+
+
+def test_openapi_version_matches_installed_package() -> None:
+    application = create_app()
+
+    assert application.openapi()["info"]["version"] == version("ai-incident-investigator")
 
 
 def test_app_factory_isolates_overrides_and_lifecycle_state(

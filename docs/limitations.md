@@ -36,9 +36,15 @@ original evidence is available for checking each claim. See the
 - Distributed traces are not connected.
 - LLM input JSON is limited to 32,000 UTF-8 bytes, excluding instructions and schema.
 - Model output is capped at 2,500 tokens.
-- The SDK uses a 20-second timeout and at most one retry.
+- The SDK uses a 20-second timeout with automatic retries disabled; one investigation
+  makes at most one model attempt. Retrying the HTTP investigation request is a new attempt.
 - Requests use store=False; this does not imply zero provider data retention.
 - PostgreSQL snapshots are optional; the default Compose demo does not enable storage.
 - Saved history requires PostgreSQL; without it the workspace keeps one report in memory.
+- Usage totals cover saved application calls, not every charge on the provider account.
+  A failure to save a report can leave a billable call outside the dashboard.
+- Costs use versioned standard-tier text prices for the supported model. Unknown usage,
+  models, or service tiers remain unknown; estimates are not provider invoices.
+- The local demo has no authentication, authorization, or automatic data-retention policy.
 - Background workers and automatic incident detection are not implemented.
 - No automatic patch generation, pull requests, deployment, or on-call notifications.

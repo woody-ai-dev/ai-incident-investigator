@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1490" viewBox="0 0 1540 1490" role="img" aria-labelledby="title desc">
-  <title id="title">AI Incident Investigator — optional PostgreSQL persistence</title>
-  <desc id="desc">HTTP validation delegates to the application workflow, which invokes the core investigation pipeline and optionally saves the completed snapshot through an InvestigationStore port. SQLAlchemy and Psycopg implement PostgreSQL persistence. The response ID header is returned only after commit. A GET route loads saved snapshots; Alembic migrations run before startup. The evaluation runner calls the core directly, bypassing persistence, and keeps file artifacts. React Router provides filtered, cursor-paginated history and shareable saved-report pages. History reads never repeat collection or analysis.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="1740" viewBox="0 0 1540 1740" role="img" aria-labelledby="title desc">
+  <title id="title">AI Incident Investigator — v0.2 investigations and model usage</title>
+  <desc id="desc">On-demand collection records evidence, per-source outcomes and durations. Optional OpenAI analysis records provider usage and supported price estimates. The workflow saves the snapshot and normalized usage in one PostgreSQL transaction. History and UsageReader serve saved data without source collection or model calls. Alembic runs before startup. Evaluation bypasses persistence and retains file artifacts.</desc>
   <defs>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563EB" />
@@ -18,16 +18,16 @@
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#15805D" />
     </marker>
   </defs>
-  <rect id="canvas" x="0" y="0" width="1540" height="1490" rx="0" fill="#F5F8FC" stroke="#F5F8FC" stroke-width="1" />
+  <rect id="canvas" x="0" y="0" width="1540" height="1740" rx="0" fill="#F5F8FC" stroke="#F5F8FC" stroke-width="1" />
   <text id="project-title" x="40" y="57.92" font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="700" fill="#172B43" text-anchor="start">
     <tspan x="40" dy="0.00">AI Incident Investigator</tspan>
   </text>
   <text id="project-subtitle" x="42" y="89.30" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="42" dy="0">Request-driven investigation  /  Optional PostgreSQL snapshots</tspan>
+    <tspan x="42" dy="0">On-demand investigation  /  Source outcomes  /  Saved history  /  Model usage</tspan>
   </text>
   <rect id="mvp-badge" x="1365" y="41" width="135" height="35" rx="16" fill="#E8F0FF" stroke="#C9DCFF" stroke-width="1" />
   <text id="mvp-badge-text" x="1432.5" y="62.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#2563EB" text-anchor="middle">
-    <tspan x="1432.5" dy="0">Current build</tspan>
+    <tspan x="1432.5" dy="0">v0.2 architecture</tspan>
   </text>
   <rect id="request-lane" x="40" y="113" width="1460" height="100" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
   <text id="request-title" x="62" y="132.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#60738A" text-anchor="start">
@@ -38,7 +38,7 @@
     <tspan x="86" dy="0.00">React + TypeScript</tspan>
   </text>
   <text id="react-body" x="86" y="187.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="86" dy="0.00">Submit · browse history · share saved reports</tspan>
+    <tspan x="86" dy="0">Investigate · saved history · Usage dashboard</tspan>
   </text>
   <rect id="nginx" x="440" y="145" width="275" height="54" rx="9" fill="#F4F8FF" stroke="#D5E3FA" stroke-width="1" />
   <text id="nginx-title" x="456" y="166.30" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#172B43" text-anchor="start">
@@ -52,7 +52,7 @@
     <tspan x="826" dy="0">FastAPI · create_app()</tspan>
   </text>
   <text id="fastapi-body" x="826" y="187.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="826" dy="0">POST workflow · list / filter · GET snapshot</tspan>
+    <tspan x="826" dy="0">POST investigation · GET history / usage</tspan>
   </text>
   <path id="request-browser-proxy" d="M 345 172 L 440 172" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
   <text id="request-api-prefix" x="392.5" y="158.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#2563EB" text-anchor="middle">
@@ -96,7 +96,7 @@
   </text>
   <path id="api-orchestrator" d="M 955 199 L 955 287" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
   <text id="sequential-note" x="515" y="371.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="515" dy="0.00">Sequential collection · partial results keep explicit data gaps</tspan>
+    <tspan x="515" dy="0">Sequential collection · source outcomes and duration · explicit gaps</tspan>
   </text>
   <path id="orchestrator-to-logs" d="M 955 351 L 955 385" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
   <rect id="llm-default" x="1129" y="287" width="337" height="64" rx="10" fill="#EEE7FC" stroke="#DDD0F5" stroke-width="1" />
@@ -180,8 +180,8 @@
     <tspan x="534" dy="0.00">Combined evidence + data gaps</tspan>
   </text>
   <text id="combined-evidence-body" x="534" y="776.06" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="534" dy="0.00">Original observations and evidence IDs are preserved.</tspan>
-    <tspan x="534" dy="16.56">Traces are explicitly reported as unavailable in MVP.</tspan>
+    <tspan x="534" dy="0">Original observations, evidence IDs, source outcomes and timing.</tspan>
+    <tspan x="534" dy="15.18">Traces are explicitly reported as unavailable.</tspan>
   </text>
   <path id="context-to-evidence" d="M 739 677 L 739 725" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
   <text id="telemetry-note" x="66" y="737.28" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#0F807A" text-anchor="start">
@@ -195,8 +195,8 @@
     <tspan x="1159" dy="0.00">OpenAI Analyzer</tspan>
   </text>
   <text id="openai-analyzer-body" x="1159" y="435.43" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="1159" dy="0.00">Structured output · store=false</tspan>
-    <tspan x="1159" dy="15.18">Bounded input and output · server-side key</tspan>
+    <tspan x="1159" dy="0">Structured output · store=false · no SDK retries</tspan>
+    <tspan x="1159" dy="15.18">Provider tokens · actual model · call duration</tspan>
   </text>
   <rect id="output-validation" x="1129" y="516" width="337" height="90" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
   <rect id="output-validation-accent" x="1144" y="532" width="4" height="20" rx="2" fill="#7C3AED" stroke="#7C3AED" stroke-width="1" />
@@ -214,9 +214,9 @@
     <tspan x="1159" dy="0.00">InvestigationReport</tspan>
   </text>
   <text id="report-body" x="1159" y="742.25" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="1159" dy="0">Evidence · findings · hypotheses · checks</tspan>
-    <tspan x="1159" dy="15.18">Missing data + explicit analysis status</tspan>
-    <tspan x="1159" dy="15.18" />
+    <tspan x="1159" dy="0">Short summary · findings · checks · evidence</tspan>
+    <tspan x="1159" dy="15.18">Source outcomes · data gaps · analysis status</tspan>
+    <tspan x="1159" dy="15.18">Optional usage + versioned price snapshot</tspan>
     <tspan x="1159" dy="15.18">Completed core report returns to workflow</tspan>
   </text>
   <path id="evidence-to-analyzer" d="M 974 745 L 1074 745 L 1074 424 L 1129 424" fill="none" stroke="#7C3AED" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
@@ -235,64 +235,64 @@
   <text id="fallback-label" x="1055.0" y="809.88" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="400" fill="#2563EB" text-anchor="middle">
     <tspan x="1055.0" dy="0.00">No AI / evidence fallback</tspan>
   </text>
-  <rect id="evaluation-lane" x="40" y="860" width="1460" height="228" rx="15" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <text id="evaluation-title" x="65" y="895.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
-    <tspan x="65" dy="0">05  /  MANUAL LIVE EVALUATION</tspan>
+  <rect id="evaluation-lane" x="40" y="860" width="1460" height="228" rx="15" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="evaluation-title" x="65" y="895.52" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
+    <tspan x="65" dy="0">06  /  MANUAL LIVE EVALUATION</tspan>
   </text>
-  <rect id="evaluation-badge" x="1177" y="875" width="293" height="31" rx="14" fill="#FFF7E6" stroke="#F3DFB1" stroke-width="1" transform="translate(0 380)" />
-  <text id="evaluation-badge-text" x="1323.5" y="894.02" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#936418" text-anchor="middle" transform="translate(0 380)">
+  <rect id="evaluation-badge" x="1177" y="875" width="293" height="31" rx="14" fill="#FFF7E6" stroke="#F3DFB1" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="evaluation-badge-text" x="1323.5" y="894.02" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#936418" text-anchor="middle" transform="translate(0 380) translate(0 250)">
     <tspan x="1323.5" dy="0.00">Explicit opt-in · never ordinary CI</tspan>
   </text>
-  <rect id="eval-fixtures" x="70" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <rect id="eval-fixtures-accent" x="85" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380)" />
-  <text id="eval-fixtures-title" x="100" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
+  <rect id="eval-fixtures" x="70" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-fixtures-accent" x="85" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="eval-fixtures-title" x="100" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="100" dy="0.00">Synthetic fixtures</tspan>
   </text>
-  <text id="eval-fixtures-body" x="100" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
+  <text id="eval-fixtures-body" x="100" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="100" dy="0.00">JSONL + recorded metrics</tspan>
     <tspan x="100" dy="15.18">+ recorded Actuator context</tspan>
   </text>
-  <rect id="eval-pipeline" x="360" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <rect id="eval-pipeline-accent" x="375" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380)" />
-  <text id="eval-pipeline-title" x="390" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
+  <rect id="eval-pipeline" x="360" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-pipeline-accent" x="375" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="eval-pipeline-title" x="390" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="390" dy="0">Core investigate()</tspan>
   </text>
-  <text id="eval-pipeline-body" x="390" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
+  <text id="eval-pipeline-body" x="390" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="390" dy="0">Optional real OpenAI analyzer</tspan>
     <tspan x="390" dy="15.18">No storage workflow or Java demo</tspan>
   </text>
-  <path id="eval-edge-1" d="M 310 974 L 360 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380)" />
-  <rect id="eval-checks" x="650" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <rect id="eval-checks-accent" x="665" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380)" />
-  <text id="eval-checks-title" x="680" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
+  <path id="eval-edge-1" d="M 310 974 L 360 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-checks" x="650" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-checks-accent" x="665" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="eval-checks-title" x="680" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="680" dy="0.00">Automated checks</tspan>
   </text>
-  <text id="eval-checks-body" x="680" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
-    <tspan x="680" dy="0.00">Schemas · evidence references</tspan>
-    <tspan x="680" dy="15.18">Preserve original observations</tspan>
+  <text id="eval-checks-body" x="680" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
+    <tspan x="680" dy="0">Schemas · evidence references</tspan>
+    <tspan x="680" dy="15.18">Preservation · summary length</tspan>
   </text>
-  <path id="eval-edge-2" d="M 600 974 L 650 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380)" />
-  <rect id="eval-artifacts" x="940" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <rect id="eval-artifacts-accent" x="955" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380)" />
-  <text id="eval-artifacts-title" x="970" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
+  <path id="eval-edge-2" d="M 600 974 L 650 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-artifacts" x="940" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-artifacts-accent" x="955" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="eval-artifacts-title" x="970" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="970" dy="0.00">Saved run artifacts</tspan>
   </text>
-  <text id="eval-artifacts-body" x="970" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
-    <tspan x="970" dy="0.00">Run, model and prompt metadata</tspan>
+  <text id="eval-artifacts-body" x="970" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
+    <tspan x="970" dy="0">Model · prompt · usage metadata</tspan>
     <tspan x="970" dy="15.18">Reports + execution errors</tspan>
   </text>
-  <path id="eval-edge-3" d="M 890 974 L 940 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380)" />
-  <rect id="eval-rubric" x="1230" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380)" />
-  <rect id="eval-rubric-accent" x="1245" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380)" />
-  <text id="eval-rubric-title" x="1260" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380)">
+  <path id="eval-edge-3" d="M 890 974 L 940 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-rubric" x="1230" y="929" width="240" height="91" rx="12" fill="#F8FAFD" stroke="#DCE5F0" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <rect id="eval-rubric-accent" x="1245" y="945" width="4" height="20" rx="2" fill="#64748B" stroke="#64748B" stroke-width="1" transform="translate(0 380) translate(0 250)" />
+  <text id="eval-rubric-title" x="1260" y="956.66" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#172B43" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="1260" dy="0.00">Human review rubric</tspan>
   </text>
-  <text id="eval-rubric-body" x="1260" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
+  <text id="eval-rubric-body" x="1260" y="985.93" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="1260" dy="0.00">Cause vs symptom · useful checks</tspan>
     <tspan x="1260" dy="15.18">Grounding · uncertainty · gaps</tspan>
   </text>
-  <path id="eval-edge-4" d="M 1180 974 L 1230 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380)" />
-  <text id="evaluation-limitation" x="70" y="1057.84" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380)">
+  <path id="eval-edge-4" d="M 1180 974 L 1230 974" fill="none" stroke="#64748B" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-gray)" transform="translate(0 380) translate(0 250)" />
+  <text id="evaluation-limitation" x="70" y="1057.84" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A" text-anchor="start" transform="translate(0 380) translate(0 250)">
     <tspan x="70" dy="0">Evaluation calls the core directly and keeps file artifacts. It bypasses the persistence workflow; conclusions require human review.</tspan>
   </text>
   <rect id="storage-lane" x="40" y="860" width="1460" height="350" rx="15" fill="#F2FAF6" stroke="#D5EADF" stroke-width="1" />
@@ -318,8 +318,8 @@
     <tspan x="534" dy="0">PostgreSQL 17 · JSONB</tspan>
   </text>
   <text id="postgres-body" x="534" y="984.56" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="534" dy="0">request + report · UTC time · duration</tspan>
-    <tspan x="534" dy="15.18">Configured model · prompt hash · schema v1</tspan>
+    <tspan x="534" dy="0">investigations JSONB + normalized llm_usage</tspan>
+    <tspan x="534" dy="15.18">Request · report · duration · model · prompt hash</tspan>
     <tspan x="534" dy="15.18">Named volume: investigation-data</tspan>
   </text>
   <rect id="snapshot-repository" x="1129" y="930" width="337" height="100" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
@@ -328,8 +328,8 @@
     <tspan x="1159" dy="0">SQLAlchemy repository</tspan>
   </text>
   <text id="snapshot-repository-body" x="1159" y="983.74" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="1159" dy="0">Port: InvestigationStore</tspan>
-    <tspan x="1159" dy="15.18">SQLAlchemy + Psycopg adapter</tspan>
+    <tspan x="1159" dy="0">InvestigationStore · SQLAlchemy + Psycopg</tspan>
+    <tspan x="1159" dy="15.18">Snapshot + usage saved atomically</tspan>
     <tspan x="1159" dy="15.18">Short transaction after analysis</tspan>
   </text>
   <rect id="alembic" x="504" y="1080" width="470" height="68" rx="12" fill="#F7FBF9" stroke="#DCE5F0" stroke-width="1" />
@@ -369,6 +369,49 @@
     <tspan x="1308" dy="0">load</tspan>
   </text>
   <text id="storage-limits" x="70" y="1186.08" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A" text-anchor="start">
-    <tspan x="70" dy="0">No DB session during collection or LLM calls. ID follows commit. History reads use cursor pagination; no model calls.</tspan>
+    <tspan x="70" dy="0">No DB session during collection or LLM calls. ID follows commit. Saved reads do not collect sources or call a model.</tspan>
+  </text>
+  <rect id="usage-lane" x="40" y="1230" width="1460" height="230" rx="15" fill="#F0F5FF" stroke="#D5E3FA" stroke-width="1" />
+  <text id="usage-title" x="65" y="1265.74" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#2563EB">
+    <tspan x="65" dy="0">05  /  SAVED MODEL USAGE</tspan>
+  </text>
+  <rect id="usage-ui" x="66" y="1290" width="338" height="100" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
+  <rect id="usage-ui-accent" x="81" y="1306" width="4" height="20" rx="2" fill="#2563EB" stroke="#2563EB" stroke-width="1" />
+  <text id="usage-ui-title" x="96" y="1318.44" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#172B43">
+    <tspan x="96" dy="0">Usage dashboard</tspan>
+  </text>
+  <text id="usage-ui-body" x="96" y="1344.56" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A">
+    <tspan x="96" dy="0">7 / 30 days · tokens / estimated cost</tspan>
+    <tspan x="96" dy="15.18">UTC daily trends · five largest analyses</tspan>
+    <tspan x="96" dy="15.18">Read-only links to saved reports</tspan>
+  </text>
+  <rect id="usage-reader" x="504" y="1290" width="470" height="100" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
+  <rect id="usage-reader-accent" x="519" y="1306" width="4" height="20" rx="2" fill="#2563EB" stroke="#2563EB" stroke-width="1" />
+  <text id="usage-reader-title" x="534" y="1318.44" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#172B43">
+    <tspan x="534" dy="0">SQLAlchemyUsageReader</tspan>
+  </text>
+  <text id="usage-reader-body" x="534" y="1344.56" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A">
+    <tspan x="534" dy="0">GET /usage · UsageReader port</tspan>
+    <tspan x="534" dy="15.18">UTC aggregates from saved application calls</tspan>
+    <tspan x="534" dy="15.18">No collector or model invocation</tspan>
+  </text>
+  <rect id="usage-rows" x="1129" y="1290" width="337" height="100" rx="12" fill="#FFFFFF" stroke="#DCE5F0" stroke-width="1" />
+  <rect id="usage-rows-accent" x="1144" y="1306" width="4" height="20" rx="2" fill="#2563EB" stroke="#2563EB" stroke-width="1" />
+  <text id="usage-rows-title" x="1159" y="1318.44" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#172B43">
+    <tspan x="1159" dy="0">PostgreSQL · llm_usage</tspan>
+  </text>
+  <text id="usage-rows-body" x="1159" y="1344.56" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#60738A">
+    <tspan x="1159" dy="0">Provider tokens · duration · actual model in report</tspan>
+    <tspan x="1159" dy="15.18">Versioned supported prices retained in report</tspan>
+    <tspan x="1159" dy="15.18">Unknown usage / pricing stays unknown</tspan>
+  </text>
+  <path id="usage-to-reader" d="M 1129 1345 L 974 1345" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
+  <text id="usage-aggregate-label" x="996" y="1326.74" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="400" fill="#2563EB">
+    <tspan x="996" dy="0">SELECT</tspan>
+  </text>
+  <path id="usage-to-ui" d="M 504 1345 L 404 1345" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
+  <path id="repository-to-usage" d="M 1466 980 L 1482 980 L 1482 1276 L 1297 1276 L 1297 1290" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
+  <text id="usage-limits" x="70" y="1432.08" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="400" fill="#60738A">
+    <tspan x="70" dy="0">Usage covers saved calls, not the provider invoice. Cached input is part of input tokens. Old snapshots receive no invented usage.</tspan>
   </text>
 </svg>
