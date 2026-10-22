@@ -1,6 +1,7 @@
 from asyncio import to_thread
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 
 from fastapi import FastAPI
 from sqlalchemy import Engine
@@ -48,7 +49,7 @@ async def health() -> dict[str, str]:
 def create_app() -> FastAPI:
     application = FastAPI(
         title="AI Incident Investigator",
-        version="0.1.0",
+        version=version("ai-incident-investigator"),
         lifespan=lifespan,
     )
     application.include_router(investigations_router)

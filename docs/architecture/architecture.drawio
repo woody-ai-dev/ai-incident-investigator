@@ -1,23 +1,23 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mxfile host="app.diagrams.net" version="24.7.17" type="device">
-  <diagram id="persistence-architecture" name="Investigation + Persistence">
-    <mxGraphModel dx="1540" dy="1490" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1540" pageHeight="1490" math="0" shadow="0" background="#F5F8FC">
+  <diagram id="persistence-architecture" name="v0.2 · Investigations and usage">
+    <mxGraphModel dx="1540" dy="1740" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1540" pageHeight="1740" math="0" shadow="0" background="#F5F8FC">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="canvas" value="" style="rounded=0;arcSize=0;whiteSpace=wrap;html=0;fillColor=#F5F8FC;strokeColor=#F5F8FC;strokeWidth=1;locked=1;" vertex="1" parent="1">
-          <mxGeometry x="0" y="0" width="1540" height="1490" as="geometry" />
+          <mxGeometry x="0" y="0" width="1540" height="1740" as="geometry" />
         </mxCell>
         <mxCell id="project-title" value="AI Incident Investigator" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=31;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="27" width="950" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="project-subtitle" value="Request-driven investigation  /  Optional PostgreSQL snapshots" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="project-subtitle" value="On-demand investigation  /  Source outcomes  /  Saved history  /  Model usage" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="42" y="74" width="1080" height="21" as="geometry" />
         </mxCell>
         <mxCell id="mvp-badge" value="" style="rounded=1;arcSize=50;whiteSpace=wrap;html=0;fillColor=#E8F0FF;strokeColor=#C9DCFF;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry x="1365" y="41" width="135" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="mvp-badge-text" value="Current build" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=13;fontColor=#2563EB;fontStyle=1;spacing=0;" vertex="1" parent="1">
+        <mxCell id="mvp-badge-text" value="v0.2 architecture" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=13;fontColor=#2563EB;fontStyle=1;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="1365" y="41" width="135" height="35" as="geometry" />
         </mxCell>
         <mxCell id="request-lane" value="" style="rounded=1;arcSize=24;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="1">
@@ -35,7 +35,7 @@
         <mxCell id="react-title" value="React + TypeScript" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="react-group">
           <mxGeometry x="16" y="5" width="245" height="23" as="geometry" />
         </mxCell>
-        <mxCell id="react-body" value="Submit · browse history · share saved reports" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="react-group">
+        <mxCell id="react-body" value="Investigate · saved history · Usage dashboard" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="react-group">
           <mxGeometry x="16" y="31" width="245" height="16" as="geometry" />
         </mxCell>
         <mxCell id="nginx-group" value="" style="group;" vertex="1" connectable="1" parent="1">
@@ -59,7 +59,7 @@
         <mxCell id="fastapi-title" value="FastAPI · create_app()" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=15;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="fastapi-group">
           <mxGeometry x="16" y="5" width="270" height="23" as="geometry" />
         </mxCell>
-        <mxCell id="fastapi-body" value="POST workflow · list / filter · GET snapshot" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="fastapi-group">
+        <mxCell id="fastapi-body" value="POST investigation · GET history / usage" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="fastapi-group">
           <mxGeometry x="16" y="31" width="270" height="16" as="geometry" />
         </mxCell>
         <mxCell id="request-browser-proxy" edge="1" parent="1" source="react-group" target="nginx-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;">
@@ -137,7 +137,7 @@
             <mxPoint x="955" y="287" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="sequential-note" value="Sequential collection · partial results keep explicit data gaps" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="1">
+        <mxCell id="sequential-note" value="Sequential collection · source outcomes and duration · explicit gaps" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="1">
           <mxGeometry x="515" y="358" width="445" height="20" as="geometry" />
         </mxCell>
         <mxCell id="orchestrator-to-logs" edge="1" parent="1" source="orchestrator-group" target="logs-collector-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=0.9595744680851064;exitY=1.0;exitPerimeter=0;entryX=0.9595744680851064;entryY=0.0;entryPerimeter=0;">
@@ -296,7 +296,7 @@
         <mxCell id="combined-evidence-title" value="Combined evidence + data gaps" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="combined-evidence-group">
           <mxGeometry x="30" y="11" width="426" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="combined-evidence-body" value="Original observations and evidence IDs are preserved.&#10;Traces are explicitly reported as unavailable in MVP." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="combined-evidence-group">
+        <mxCell id="combined-evidence-body" value="Original observations, evidence IDs, source outcomes and timing.&#10;Traces are explicitly reported as unavailable." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="combined-evidence-group">
           <mxGeometry x="30" y="38" width="427" height="35" as="geometry" />
         </mxCell>
         <mxCell id="context-to-evidence" edge="1" parent="1" source="actuator-collector-group" target="combined-evidence-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryPerimeter=0;">
@@ -320,7 +320,7 @@
         <mxCell id="openai-analyzer-title" value="OpenAI Analyzer" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="openai-analyzer-group">
           <mxGeometry x="30" y="11" width="293" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="openai-analyzer-body" value="Structured output · store=false&#10;Bounded input and output · server-side key" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="openai-analyzer-group">
+        <mxCell id="openai-analyzer-body" value="Structured output · store=false · no SDK retries&#10;Provider tokens · actual model · call duration" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="openai-analyzer-group">
           <mxGeometry x="30" y="38" width="294" height="33" as="geometry" />
         </mxCell>
         <mxCell id="output-validation-group" value="" style="group;" vertex="1" connectable="1" parent="1">
@@ -350,7 +350,7 @@
         <mxCell id="report-title" value="InvestigationReport" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="report-group">
           <mxGeometry x="30" y="11" width="293" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="report-body" value="Evidence · findings · hypotheses · checks&#10;Missing data + explicit analysis status&#10;&#10;Completed core report returns to workflow" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="report-group">
+        <mxCell id="report-body" value="Short summary · findings · checks · evidence&#10;Source outcomes · data gaps · analysis status&#10;Optional usage + versioned price snapshot&#10;Completed core report returns to workflow" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="report-group">
           <mxGeometry x="30" y="38" width="294" height="73" as="geometry" />
         </mxCell>
         <mxCell id="evidence-to-analyzer" edge="1" parent="1" source="combined-evidence-group" target="openai-analyzer-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#7C3AED;strokeWidth=1.7;endArrow=block;endFill=1;exitX=1.0;exitY=0.25;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;">
@@ -398,19 +398,19 @@
           <mxGeometry x="985" y="798" width="140" height="18" as="geometry" />
         </mxCell>
         <mxCell id="evaluation-lane" value="" style="rounded=1;arcSize=13;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1240" width="1460" height="228" as="geometry" />
+          <mxGeometry x="40" y="1490" width="1460" height="228" as="geometry" />
         </mxCell>
-        <mxCell id="evaluation-title" value="05  /  MANUAL LIVE EVALUATION" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="65" y="1261" width="850" height="22" as="geometry" />
+        <mxCell id="evaluation-title" value="06  /  MANUAL LIVE EVALUATION" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="1">
+          <mxGeometry x="65" y="1511" width="850" height="22" as="geometry" />
         </mxCell>
         <mxCell id="evaluation-badge" value="" style="rounded=1;arcSize=50;whiteSpace=wrap;html=0;fillColor=#FFF7E6;strokeColor=#F3DFB1;strokeWidth=1;" vertex="1" parent="1">
-          <mxGeometry x="1177" y="1255" width="293" height="31" as="geometry" />
+          <mxGeometry x="1177" y="1505" width="293" height="31" as="geometry" />
         </mxCell>
         <mxCell id="evaluation-badge-text" value="Explicit opt-in · never ordinary CI" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#936418;fontStyle=1;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="1177" y="1255" width="293" height="31" as="geometry" />
+          <mxGeometry x="1177" y="1505" width="293" height="31" as="geometry" />
         </mxCell>
         <mxCell id="eval-fixtures-group" value="" style="group;" vertex="1" connectable="1" parent="1">
-          <mxGeometry x="70" y="1309" width="240" height="91" as="geometry" />
+          <mxGeometry x="70" y="1559" width="240" height="91" as="geometry" />
         </mxCell>
         <mxCell id="eval-fixtures" value="" style="rounded=1;arcSize=26;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="eval-fixtures-group">
           <mxGeometry x="0" y="0" width="240" height="91" as="geometry" />
@@ -425,7 +425,7 @@
           <mxGeometry x="30" y="38" width="197" height="46" as="geometry" />
         </mxCell>
         <mxCell id="eval-pipeline-group" value="" style="group;" vertex="1" connectable="1" parent="1">
-          <mxGeometry x="360" y="1309" width="240" height="91" as="geometry" />
+          <mxGeometry x="360" y="1559" width="240" height="91" as="geometry" />
         </mxCell>
         <mxCell id="eval-pipeline" value="" style="rounded=1;arcSize=26;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="eval-pipeline-group">
           <mxGeometry x="0" y="0" width="240" height="91" as="geometry" />
@@ -441,12 +441,12 @@
         </mxCell>
         <mxCell id="eval-edge-1" edge="1" parent="1" source="eval-fixtures-group" target="eval-pipeline-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;exitX=1.0;exitY=0.4945054945054945;exitPerimeter=0;entryX=0.0;entryY=0.4945054945054945;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="310" y="1354" as="sourcePoint" />
-            <mxPoint x="360" y="1354" as="targetPoint" />
+            <mxPoint x="310" y="1604" as="sourcePoint" />
+            <mxPoint x="360" y="1604" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="eval-checks-group" value="" style="group;" vertex="1" connectable="1" parent="1">
-          <mxGeometry x="650" y="1309" width="240" height="91" as="geometry" />
+          <mxGeometry x="650" y="1559" width="240" height="91" as="geometry" />
         </mxCell>
         <mxCell id="eval-checks" value="" style="rounded=1;arcSize=26;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="eval-checks-group">
           <mxGeometry x="0" y="0" width="240" height="91" as="geometry" />
@@ -457,17 +457,17 @@
         <mxCell id="eval-checks-title" value="Automated checks" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=13;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="eval-checks-group">
           <mxGeometry x="30" y="11" width="196" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="eval-checks-body" value="Schemas · evidence references&#10;Preserve original observations" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="eval-checks-group">
+        <mxCell id="eval-checks-body" value="Schemas · evidence references&#10;Preservation · summary length" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="eval-checks-group">
           <mxGeometry x="30" y="38" width="197" height="46" as="geometry" />
         </mxCell>
         <mxCell id="eval-edge-2" edge="1" parent="1" source="eval-pipeline-group" target="eval-checks-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;exitX=1.0;exitY=0.4945054945054945;exitPerimeter=0;entryX=0.0;entryY=0.4945054945054945;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="600" y="1354" as="sourcePoint" />
-            <mxPoint x="650" y="1354" as="targetPoint" />
+            <mxPoint x="600" y="1604" as="sourcePoint" />
+            <mxPoint x="650" y="1604" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="eval-artifacts-group" value="" style="group;" vertex="1" connectable="1" parent="1">
-          <mxGeometry x="940" y="1309" width="240" height="91" as="geometry" />
+          <mxGeometry x="940" y="1559" width="240" height="91" as="geometry" />
         </mxCell>
         <mxCell id="eval-artifacts" value="" style="rounded=1;arcSize=26;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="eval-artifacts-group">
           <mxGeometry x="0" y="0" width="240" height="91" as="geometry" />
@@ -478,17 +478,17 @@
         <mxCell id="eval-artifacts-title" value="Saved run artifacts" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=13;fontColor=#172B43;fontStyle=1;spacing=0;" vertex="1" parent="eval-artifacts-group">
           <mxGeometry x="30" y="11" width="196" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="eval-artifacts-body" value="Run, model and prompt metadata&#10;Reports + execution errors" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="eval-artifacts-group">
+        <mxCell id="eval-artifacts-body" value="Model · prompt · usage metadata&#10;Reports + execution errors" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="eval-artifacts-group">
           <mxGeometry x="30" y="38" width="197" height="46" as="geometry" />
         </mxCell>
         <mxCell id="eval-edge-3" edge="1" parent="1" source="eval-checks-group" target="eval-artifacts-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;exitX=1.0;exitY=0.4945054945054945;exitPerimeter=0;entryX=0.0;entryY=0.4945054945054945;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="890" y="1354" as="sourcePoint" />
-            <mxPoint x="940" y="1354" as="targetPoint" />
+            <mxPoint x="890" y="1604" as="sourcePoint" />
+            <mxPoint x="940" y="1604" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="eval-rubric-group" value="" style="group;" vertex="1" connectable="1" parent="1">
-          <mxGeometry x="1230" y="1309" width="240" height="91" as="geometry" />
+          <mxGeometry x="1230" y="1559" width="240" height="91" as="geometry" />
         </mxCell>
         <mxCell id="eval-rubric" value="" style="rounded=1;arcSize=26;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DCE5F0;strokeWidth=1;" vertex="1" parent="eval-rubric-group">
           <mxGeometry x="0" y="0" width="240" height="91" as="geometry" />
@@ -504,12 +504,12 @@
         </mxCell>
         <mxCell id="eval-edge-4" edge="1" parent="1" source="eval-artifacts-group" target="eval-rubric-group" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;strokeColor=#64748B;strokeWidth=1.5;endArrow=block;endFill=1;exitX=1.0;exitY=0.4945054945054945;exitPerimeter=0;entryX=0.0;entryY=0.4945054945054945;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1180" y="1354" as="sourcePoint" />
-            <mxPoint x="1230" y="1354" as="targetPoint" />
+            <mxPoint x="1180" y="1604" as="sourcePoint" />
+            <mxPoint x="1230" y="1604" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="evaluation-limitation" value="Evaluation calls the core directly and keeps file artifacts. It bypasses the persistence workflow; conclusions require human review." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;" vertex="1" parent="1">
-          <mxGeometry x="70" y="1423" width="1400" height="22" as="geometry" />
+          <mxGeometry x="70" y="1673" width="1400" height="22" as="geometry" />
         </mxCell>
         <mxCell id="storage-lane" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#F2FAF6;strokeColor=#D5EADF;strokeWidth=1;">
           <mxGeometry x="40" y="860" width="1460" height="350" as="geometry" />
@@ -541,7 +541,7 @@
         <mxCell id="postgres-title" value="PostgreSQL 17 · JSONB" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;">
           <mxGeometry x="534" y="941" width="426" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="postgres-body" value="request + report · UTC time · duration&#10;Configured model · prompt hash · schema v1&#10;Named volume: investigation-data" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+        <mxCell id="postgres-body" value="investigations JSONB + normalized llm_usage&#10;Request · report · duration · model · prompt hash&#10;Named volume: investigation-data" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
           <mxGeometry x="534" y="970" width="426" height="52" as="geometry" />
         </mxCell>
         <mxCell id="snapshot-repository" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;">
@@ -553,7 +553,7 @@
         <mxCell id="snapshot-repository-title" value="SQLAlchemy repository" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;">
           <mxGeometry x="1159" y="941" width="293" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="snapshot-repository-body" value="Port: InvestigationStore&#10;SQLAlchemy + Psycopg adapter&#10;Short transaction after analysis" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+        <mxCell id="snapshot-repository-body" value="InvestigationStore · SQLAlchemy + Psycopg&#10;Snapshot + usage saved atomically&#10;Short transaction after analysis" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
           <mxGeometry x="1159" y="970" width="293" height="52" as="geometry" />
         </mxCell>
         <mxCell id="alembic" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#F7FBF9;strokeColor=#DCE5F0;strokeWidth=1;">
@@ -631,8 +631,79 @@
         <mxCell id="read-label" value="load" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#15805D;fontStyle=0;spacing=0;">
           <mxGeometry x="1308" y="1043" width="100" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="storage-limits" value="No DB session during collection or LLM calls. ID follows commit. History reads use cursor pagination; no model calls." vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;">
+        <mxCell id="storage-limits" value="No DB session during collection or LLM calls. ID follows commit. Saved reads do not collect sources or call a model." vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;">
           <mxGeometry x="70" y="1171" width="1400" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-lane" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#F0F5FF;strokeColor=#D5E3FA;strokeWidth=1;">
+          <mxGeometry x="40" y="1230" width="1460" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-title" value="05  /  SAVED MODEL USAGE" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#2563EB;fontStyle=1;spacing=0;">
+          <mxGeometry x="65" y="1251" width="700" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-ui" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;">
+          <mxGeometry x="66" y="1290" width="338" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-ui-accent" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#2563EB;strokeColor=#2563EB;strokeWidth=1;">
+          <mxGeometry x="81" y="1306" width="4" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-ui-title" value="Usage dashboard" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;">
+          <mxGeometry x="96" y="1301" width="294" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-ui-body" value="7 / 30 days · tokens / estimated cost&#10;UTC daily trends · five largest analyses&#10;Read-only links to saved reports" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+          <mxGeometry x="96" y="1330" width="294" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-reader" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;">
+          <mxGeometry x="504" y="1290" width="470" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-reader-accent" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#2563EB;strokeColor=#2563EB;strokeWidth=1;">
+          <mxGeometry x="519" y="1306" width="4" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-reader-title" value="SQLAlchemyUsageReader" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;">
+          <mxGeometry x="534" y="1301" width="426" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-reader-body" value="GET /usage · UsageReader port&#10;UTC aggregates from saved application calls&#10;No collector or model invocation" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+          <mxGeometry x="534" y="1330" width="426" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-rows" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#FFFFFF;strokeColor=#DCE5F0;strokeWidth=1;">
+          <mxGeometry x="1129" y="1290" width="337" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-rows-accent" value="" vertex="1" parent="1" style="rounded=1;arcSize=12;html=0;fillColor=#2563EB;strokeColor=#2563EB;strokeWidth=1;">
+          <mxGeometry x="1144" y="1306" width="4" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-rows-title" value="PostgreSQL · llm_usage" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=16;fontColor=#172B43;fontStyle=1;spacing=0;">
+          <mxGeometry x="1159" y="1301" width="293" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-rows-body" value="Provider tokens · duration · actual model in report&#10;Versioned supported prices retained in report&#10;Unknown usage / pricing stays unknown" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#60738A;fontStyle=0;spacing=0;">
+          <mxGeometry x="1159" y="1330" width="293" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-to-reader" edge="1" parent="1" source="usage-rows" target="usage-reader" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=0.0;exitY=0.55;exitPerimeter=0;entryX=1.0;entryY=0.55;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1129" y="1345" as="sourcePoint" />
+            <mxPoint x="974" y="1345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="usage-aggregate-label" value="SELECT" vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#2563EB;fontStyle=0;spacing=0;">
+          <mxGeometry x="996" y="1313" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="usage-to-ui" edge="1" parent="1" source="usage-reader" target="usage-ui" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=0.0;exitY=0.55;exitPerimeter=0;entryX=1.0;entryY=0.55;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="504" y="1345" as="sourcePoint" />
+            <mxPoint x="404" y="1345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="repository-to-usage" edge="1" parent="1" source="snapshot-repository" target="usage-rows" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;strokeColor=#2563EB;strokeWidth=1.7;endArrow=block;endFill=1;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.49851632047477745;entryY=0.0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1466" y="980" as="sourcePoint" />
+            <mxPoint x="1297" y="1290" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1482" y="980" />
+              <mxPoint x="1482" y="1276" />
+              <mxPoint x="1297" y="1276" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="usage-limits" value="Usage covers saved calls, not the provider invoice. Cached input is part of input tokens. Old snapshots receive no invented usage." vertex="1" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=12;fontColor=#60738A;fontStyle=0;spacing=0;">
+          <mxGeometry x="70" y="1417" width="1400" height="22" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
