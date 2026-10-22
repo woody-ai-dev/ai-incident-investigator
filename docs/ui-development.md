@@ -152,7 +152,7 @@ ALLOW_LIVE_LLM=true npm --prefix frontend run test:e2e:live
 ```
 
 It submits one fresh investigation through the UI and checks telemetry, completed
-analysis, citations, and JSON export. The backend SDK may retry one provider request;
+analysis, citations, and JSON export. The backend adapter disables SDK automatic retries;
 Playwright retries are disabled. This billable test is excluded from ordinary CI and
 never needs an API key in the frontend. Add `RECORD_DEMO=true` for reading pauses in the
 real browser recording. See the

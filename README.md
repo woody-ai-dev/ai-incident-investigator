@@ -345,6 +345,8 @@ pages require optional PostgreSQL storage. Without it, the workspace keeps its l
 report only in memory. Queues, traces, RAG, automated fixes, and notifications are not
 implemented. See [all collection and analysis limits](docs/limitations.md) and the
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
+A draft [runbook corpus](docs/knowledge.md) prepares future RAG work.
+Runbook retrieval and model integration are not implemented yet.
 
 ## Guides
 

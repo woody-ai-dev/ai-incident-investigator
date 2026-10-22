@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "documents": [
+    {
+      "id": "payment-timeout",
+      "title": "Investigate a payment timeout",
+      "service": "order-service",
+      "environment": "local",
+      "owner": "project-maintainer",
+      "version": 1,
+      "status": "draft",
+      "reviewed_by": null,
+      "file": "payment-timeout.md"
+    },
+    {
+      "id": "heap-investigation",
+      "title": "Investigate JVM heap observations",
+      "service": "order-service",
+      "environment": "local",
+      "owner": "project-maintainer",
+      "version": 1,
+      "status": "draft",
+      "reviewed_by": null,
+      "file": "heap-investigation.md"
+    },
+    {
+      "id": "partial-collection",
+      "title": "Investigate incomplete telemetry collection",
+      "service": "order-service",
+      "environment": "local",
+      "owner": "project-maintainer",
+      "version": 1,
+      "status": "draft",
+      "reviewed_by": null,
+      "file": "partial-collection.md"
+    }
+  ]
+}
