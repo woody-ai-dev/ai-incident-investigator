@@ -70,3 +70,26 @@ class RunbookDocument(KnowledgeModel):
     metadata: RunbookMetadata
     content: str = Field(min_length=1)
     content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class RunbookChunk(KnowledgeModel):
+    model_config = ConfigDict(str_strip_whitespace=False)
+
+    id: str = Field(pattern=r"^chunk-[0-9a-f]{64}$")
+    document: RunbookMetadata
+    document_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    ingestion_version: Literal["markdown-it-sections-v1"]
+
+    section: str = Field(min_length=1)
+    ordinal: Annotated[int, Field(strict=True, ge=0)]
+    start_line: Annotated[int, Field(strict=True, ge=1)]
+    end_line: Annotated[int, Field(strict=True, ge=1)]
+
+    content: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_lines(self) -> Self:
+        if self.end_line < self.start_line:
+            raise ValueError("Chunk end_line must not precede start_line")
+
+        return self

@@ -99,3 +99,96 @@ Run from the repository root:
 
 No model calls, database, or running services are required for
 the corpus tests.
+
+## Markdown ingestion
+
+Ingestion prepares local runbook chunks without invoking a model
+or creating a search index.
+
+Markdown structure is parsed with markdown-it-py using its CommonMark
+preset. The application does not render Markdown as HTML.
+
+Top-level level-two headings define section boundaries.
+Both ATX headings (`## Checks`) and Setext headings are supported.
+
+Nested headings inside lists or block quotes do not create independent
+runbook sections. Code blocks are parsed according to CommonMark.
+
+An unclosed fenced code block continues to the end of the document.
+
+Empty top-level level-two headings are rejected as an authoring error.
+
+### Normalization
+
+Normalization removes a single initial BOM and converts CRLF and CR
+line endings to LF.
+
+Internal whitespace, indentation, blank lines, and trailing newlines
+are preserved.
+
+The original RunbookDocument remains unchanged.
+
+The parser identifies section boundaries. Chunk content is sliced
+from normalized source lines rather than reconstructed from rendered
+Markdown.
+
+Concatenating chunk contents in ordinal order reconstructs the
+normalized document exactly.
+
+### Chunk metadata
+
+Every chunk records:
+
+- The original document metadata.
+- SHA-256 of the original Markdown bytes.
+- The ingestion algorithm version.
+- The section label and ordinal.
+- An inclusive source-line range in the normalized document.
+- The section content.
+
+Section labels contain the heading's inline Markdown text, which may
+include formatting markup.
+
+Chunk IDs are deterministic hashes of document metadata, original
+content hash, ingestion version, ordinal, and source-line range.
+
+Changes to source bytes or metadata change chunk identities.
+Changing line endings can therefore change IDs even when normalized
+text is equivalent.
+
+### Size limit
+
+Sections larger than 6,000 characters are rejected.
+
+This is an initial authoring limit, not a token budget or an optimized
+retrieval chunk size. Larger documents require an explicit splitting
+strategy and retrieval evaluation.
+
+### Preview
+
+Prepare approved documents:
+
+    uv run --locked python scripts/ingest_runbooks.py
+
+Explicitly preview draft documents:
+
+    uv run --locked python scripts/ingest_runbooks.py --include-drafts
+
+Preview output includes mode=preview and must not be treated as an
+approved search index.
+
+No chunks is a valid result when no documents are approved.
+
+### Boundaries
+
+Ingestion does not verify factual correctness, remove prompt injection,
+resolve contradictory documents, or enforce editorial version updates.
+
+Runbook chunks remain documentation context, not telemetry evidence.
+
+Search and context assembly must retain relevant interpretation and
+operational limits. Section splitting alone does not guarantee that
+a model receives all necessary context.
+
+Embeddings, retrieval, reranking, and model integration are separate
+steps.
