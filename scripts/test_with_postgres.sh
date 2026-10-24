@@ -16,8 +16,15 @@ command -v uv >/dev/null || {
 
 docker info >/dev/null
 
+# Include offline HTML/PDF checks when explicitly requested.
+UV_ARGS=(--locked)
+if [[ "${1:-}" == "--with-ingestion" ]]; then
+  UV_ARGS+=(--extra ingestion)
+  shift
+fi
+
 # Install the locked project and development dependencies.
-uv sync --locked --dev
+uv sync "${UV_ARGS[@]}" --dev
 
 TEST_CONTAINER_ID=""
 
@@ -89,4 +96,4 @@ if [[ "$#" -eq 0 ]]; then
   set -- -q
 fi
 
-uv run --locked pytest "$@"
+uv run "${UV_ARGS[@]}" pytest "$@"

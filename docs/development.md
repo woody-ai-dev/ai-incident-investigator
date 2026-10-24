@@ -128,15 +128,22 @@ workflow before merge; open the badge to inspect individual job results.
 Run Python checks:
 
 ```bash
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-uv run --locked mypy
-uv run --locked pytest
+uv sync --locked --dev --extra ingestion
+uv run --locked --extra ingestion ruff format --check .
+uv run --locked --extra ingestion ruff check .
+uv run --locked --extra ingestion mypy
+uv run --locked --extra ingestion pytest
 ```
+
+The optional `ingestion` dependencies are needed for full type checking and offline
+HTML/PDF conversion tests. The normal API and Markdown ingestion use the base
+environment. Conversion tests read committed fixtures and do not download models or
+access the network; see the [knowledge ingestion guide](knowledge.md).
 
 GitHub Actions runs these validation jobs on pull requests and pushes to main:
 
-- Python formatting, linting, type checks, tests, and coverage reports.
+- Python formatting, linting, type checks, tests including offline document
+  conversion, and coverage reports.
 - Gitleaks scanning of the full Git history with redacted findings.
 - PostgreSQL integration tests using a dedicated database and per-test schemas.
 - Java tests and the Java-to-Python log contract check.

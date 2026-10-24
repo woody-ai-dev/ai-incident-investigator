@@ -1,194 +1,170 @@
-# Curated runbook corpus
+# Local knowledge corpus
 
-The repository contains a small local Markdown corpus under `runbooks/`.
+The local corpus contains Markdown runbooks, an HTML service overview, and a
+text-native PDF configuration reference. It prepares future retrieval-augmented
+investigation; the investigation pipeline does not consume these documents yet.
+Embeddings, a search index, reranking, and model integration are not implemented.
 
-This corpus is preparation for retrieval-augmented investigation.
-The investigation pipeline does not load or retrieve these documents yet.
+## Catalogs and review
 
-## Files and metadata
+`runbooks/catalog.json` (schema version 1) lists Markdown runbooks. The general
+`knowledge/catalog.json` (schema version 2) lists additional documents and imports
+the runbook metadata when `include_runbooks` is true. Imported runbooks retain
+their original owner, version, and review status. IDs and source paths must be
+unique across the combined catalog.
 
-`catalog.json` explicitly lists corpus documents.
+Documents declare a stable ID, title, exact service/environment scope, owner,
+positive integer version, review status, and source filename. General documents
+also declare a type: runbook, architecture, configuration, deployment, or
+postmortem. General source paths are relative to the repository root; imported
+runbook filenames remain relative to `runbooks/` in their original catalog.
 
-Each entry contains:
-
-- A stable document ID.
-- A title.
-- An exact service and environment scope.
-- An accountable owner.
-- A positive integer document version.
-- A draft or approved status.
-- A reviewer for approved documents.
-- A Markdown filename within the corpus directory.
-
-Catalog schema version and document version have separate meanings.
-
-The loader computes SHA-256 from the exact Markdown file bytes.
-Line-ending changes therefore change the content hash.
-
-## Review lifecycle
-
-New runbooks start as draft.
-
-Before approval, review the document against implemented behavior,
-source semantics, operational limits, and relevant project documentation.
-
-Replace the owner role with the accountable maintainer.
-Set status to approved and record reviewed_by only after review.
+New documents start as `draft`. Before approval, review their content against
+implemented behavior, source semantics, and operational limits. Replace the owner
+role with an accountable maintainer, set `status` to `approved`, and record
+`reviewed_by` only after review.
 
 When changing approved content:
 
-1. Return the document to draft.
-2. Clear reviewed_by.
-3. Increment its version.
-4. Review the updated content.
-5. Approve the new version explicitly.
+1. Return the document to `draft` and clear `reviewed_by`.
+2. Increment its document version.
+3. Review the updated content and approve it explicitly.
 
-A reviewer field records a review declaration. It does not prove
-that the document is correct or enforce an approval workflow.
-
-## Loading and selection
-
-load_corpus() validates every catalog entry, including drafts.
-Invalid entries fail the complete load.
-
-approved_runbooks() selects only approved documents matching the
-requested service and environment exactly.
-
-There are no wildcard scopes or environment fallbacks.
-
-Documents absent from the catalog are not loaded.
-
-An empty eligible corpus is valid. Draft documents must not be
-used as a fallback.
-
-## Evidence boundaries
-
-Runbooks describe recommended checks and interpretation limits.
-
-They are not telemetry evidence and do not prove that an event occurred,
-a cause was established, or a recommended action was executed.
-
-Document text must be treated as untrusted context when model
-integration is introduced.
-
-Content hashes identify bytes; they do not certify trustworthiness.
-
-## Evaluation preparation
-
-evals/knowledge-retrieval.json records relevance labels for future search.
-
-Positive labels express semantic relevance within the declared scope,
-independently of document approval status.
-
-Current tests validate labels and references. They do not run retrieval
-or establish Recall@k, ranking quality, or model accuracy.
-
-Existing pipeline and metric-boundary evaluation remain the baseline
-for telemetry preservation. Semantic model quality still requires
-separate review.
-
-## Checks
-
-Run from the repository root:
-
-    uv run --locked pytest tests/test_knowledge.py
-    uv run --locked ruff format --check .
-    uv run --locked ruff check .
-    uv run --locked mypy
-    uv run --locked pytest
-
-No model calls, database, or running services are required for
-the corpus tests.
+Review metadata records a declaration; it does not establish correctness or
+enforce the editorial workflow. Catalog schema and document versions have separate
+meanings. SHA-256 identifies original file bytes, not trustworthiness; line-ending
+changes therefore change the hash.
 
 ## Markdown ingestion
 
-Ingestion prepares local runbook chunks without invoking a model
-or creating a search index.
+The original `load_corpus()` validates all runbook entries and files, including
+drafts. `approved_runbooks()` selects only approved runbooks for an exact service
+and environment. There are no wildcard scopes or environment fallbacks.
 
-Markdown structure is parsed with markdown-it-py using its CommonMark
-preset. The application does not render Markdown as HTML.
+The Markdown chunker uses `markdown-it-py` with its CommonMark preset. Top-level
+level-two headings define boundaries, including ATX (`## Checks`) and Setext
+headings. Nested headings in lists or block quotes and headings inside code do
+not create independent sections. An unclosed fenced code block continues to the
+end of the document. Empty top-level level-two headings are rejected.
 
-Top-level level-two headings define section boundaries.
-Both ATX headings (`## Checks`) and Setext headings are supported.
+Normalization removes a single initial BOM and converts CRLF and CR to LF.
+Internal whitespace, indentation, blank lines, and trailing newlines are
+preserved. The original document is unchanged. The parser identifies boundaries;
+chunk content comes from normalized source lines, without HTML rendering.
+Concatenating chunks in ordinal order reconstructs the normalized document.
 
-Nested headings inside lists or block quotes do not create independent
-runbook sections. Code blocks are parsed according to CommonMark.
+Each Markdown chunk records document metadata, the original source hash,
+ingestion version, section label, ordinal, inclusive source-line range, and
+content. Labels may contain inline Markdown. IDs are deterministic for document
+metadata, source hash, ingestion version, ordinal, and line range. Source or
+metadata changes produce new IDs even if normalized text is equivalent.
 
-An unclosed fenced code block continues to the end of the document.
+Sections larger than 6,000 characters are rejected. This is an initial authoring
+limit, not a token budget or an optimized retrieval chunk size.
 
-Empty top-level level-two headings are rejected as an authoring error.
+Prepare approved runbooks or explicitly preview drafts:
 
-### Normalization
+```bash
+uv run --locked python scripts/ingest_runbooks.py
+uv run --locked python scripts/ingest_runbooks.py --include-drafts
+```
 
-Normalization removes a single initial BOM and converts CRLF and CR
-line endings to LF.
+## HTML and PDF extraction
 
-Internal whitespace, indentation, blank lines, and trailing newlines
-are preserved.
+Install the optional document dependencies:
 
-The original RunbookDocument remains unchanged.
+```bash
+uv sync --locked --dev --extra ingestion
+```
 
-The parser identifies section boundaries. Chunk content is sliced
-from normalized source lines rather than reconstructed from rendered
-Markdown.
+`load_knowledge_corpus()` validates the combined catalog metadata, then reads and
+extracts selected documents. Drafts are excluded unless preview is explicitly
+requested. Unlisted files are not read. A selected file that is missing or cannot
+be extracted fails the complete call. No selected documents is a valid result.
 
-Concatenating chunk contents in ordinal order reconstructs the
-normalized document exactly.
+The Markdown adapter reuses the existing section chunker and its line provenance.
+HTML and PDF use Docling and produce intermediate `KnowledgeDocument` blocks;
+those blocks are not yet optimized retrieval chunks.
 
-### Chunk metadata
+HTML preparation removes `script`, `style`, and `nav` elements. Browser rendering
+and local/remote resource fetching are disabled. Docling can normalize HTML
+whitespace, including code-block edges; extraction does not guarantee exact source
+preservation. Tables are serialized as Markdown without repeating their child
+elements.
 
-Every chunk records:
+PDF uses the native, model-free pipeline. OCR, layout models, table models, and
+page-image generation are disabled. This mode extracts text from simple
+text-native PDFs; it does not reconstruct complex reading order, headings, or
+table structure. Images and scanned text are outside this extractor's scope.
 
-- The original document metadata.
-- SHA-256 of the original Markdown bytes.
-- The ingestion algorithm version.
-- The section label and ordinal.
-- An inclusive source-line range in the normalized document.
-- The section content.
+Conversion must return a complete success and usable text. Partial conversion is
+rejected. Each result retains original metadata, the original file hash, extractor
+and library versions, blocks, and extraction limitations.
 
-Section labels contain the heading's inline Markdown text, which may
-include formatting markup.
+PDF locations use actual page numbers. HTML locations reference items in the
+Docling representation; they are not original DOM anchors. Converted text does
+not acquire invented source-line numbers.
 
-Chunk IDs are deterministic hashes of document metadata, original
-content hash, ingestion version, ordinal, and source-line range.
+Inspect the combined corpus from the repository root:
 
-Changes to source bytes or metadata change chunk identities.
-Changing line endings can therefore change IDs even when normalized
-text is equivalent.
+```bash
+uv run --locked --extra ingestion python scripts/ingest_knowledge.py
+uv run --locked --extra ingestion python scripts/ingest_knowledge.py --include-drafts
+```
 
-### Size limit
+The committed sample corpus contains five draft documents: three Markdown
+runbooks and the HTML/PDF examples. The default command therefore returns no
+documents; preview includes them and marks its output as `mode=preview`. Preview
+output must not be treated as an approved search index.
 
-Sections larger than 6,000 characters are rejected.
+## Evidence and evaluation boundaries
 
-This is an initial authoring limit, not a token budget or an optimized
-retrieval chunk size. Larger documents require an explicit splitting
-strategy and retrieval evaluation.
+Knowledge documents describe context, recommended checks, and interpretation
+limits. They are not telemetry evidence and do not establish the current cause
+or prove that a suggested action was executed. A past postmortem is an analogy,
+not proof that the current incident has the same cause.
 
-### Preview
+Ingestion does not remove prompt injection, resolve contradictory documents, or
+enforce editorial version increments. Document text remains untrusted context
+when model integration is introduced. Search-time context assembly must retain
+relevant interpretation and operational limits; section splitting alone does
+not guarantee complete context.
 
-Prepare approved documents:
+`evals/knowledge-retrieval.json` records future relevance labels. Positive labels
+express semantic relevance within a scope independently of approval status.
+Current checks validate labels and references. They do not run retrieval or
+establish Recall@k, ranking quality, or model accuracy. Existing pipeline and
+metric-boundary evaluation remain the baseline for telemetry preservation;
+semantic model quality requires separate review.
 
-    uv run --locked python scripts/ingest_runbooks.py
+## Fixtures and checks
 
-Explicitly preview draft documents:
+HTML and PDF examples and test fixtures are committed files. Tests read fixed
+fixtures under `tests/fixtures/knowledge/`; they do not generate or copy them at
+runtime. The PDF fixture has known markers on two pages so tests can check text,
+original source hash, and page attribution.
 
-    uv run --locked python scripts/ingest_runbooks.py --include-drafts
+Run the full Python checks, including real offline conversion:
 
-Preview output includes mode=preview and must not be treated as an
-approved search index.
+```bash
+uv sync --locked --dev --extra ingestion
+uv run --locked --extra ingestion ruff format --check .
+uv run --locked --extra ingestion ruff check .
+uv run --locked --extra ingestion mypy
+uv run --locked --extra ingestion pytest
+```
 
-No chunks is a valid result when no documents are approved.
+To include PostgreSQL tests in the same run, start Docker and use:
 
-### Boundaries
+```bash
+bash scripts/test_with_postgres.sh --with-ingestion
+```
 
-Ingestion does not verify factual correctness, remove prompt injection,
-resolve contradictory documents, or enforce editorial version updates.
+The script creates an isolated database and removes its container afterwards.
 
-Runbook chunks remain documentation context, not telemetry evidence.
-
-Search and context assembly must retain relevant interpretation and
-operational limits. Section splitting alone does not guarantee that
-a model receives all necessary context.
-
-Embeddings, retrieval, reranking, and model integration are separate
-steps.
+CI installs the ingestion extra before type checking and tests. Conversion tests
+block network connections and do not download models. Without that extra,
+`document_conversion` tests are skipped; full type checking requires it. The API
+and Markdown-only workflow retain their base dependencies. Corpus tests do not
+require a model key, database, or running service. PostgreSQL tests have their
+separate database requirements described in [persistence](persistence.md#test-databases).

@@ -314,10 +314,11 @@ For React development and browser checks, see [UI development](docs/ui-developme
 ## Checks and CI
 
 ```bash
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-uv run --locked mypy
-uv run --locked pytest
+uv sync --locked --dev --extra ingestion
+uv run --locked --extra ingestion ruff format --check .
+uv run --locked --extra ingestion ruff check .
+uv run --locked --extra ingestion mypy
+uv run --locked --extra ingestion pytest
 
 npm --prefix frontend run format:check
 npm --prefix frontend run lint
@@ -327,7 +328,9 @@ npm --prefix frontend run build
 
 Ordinary tests and CI do not call a live model. CI covers Python, PostgreSQL, Java,
 frontend/browser checks, and the container demo. PostgreSQL tests require a dedicated
-test database; without it, those cases are skipped locally. See [CI
+test database; without it, those cases are skipped locally. The optional `ingestion`
+dependencies enable offline HTML/PDF conversion checks and are required for the full
+type-checking run. The running API does not need them. See [CI
 details](docs/development.md#checks-and-ci),
 [persistence tests](docs/persistence.md#test-databases),
 [browser checks](docs/ui-development.md#browser-end-to-end-checks), and
@@ -345,8 +348,8 @@ pages require optional PostgreSQL storage. Without it, the workspace keeps its l
 report only in memory. Queues, traces, RAG, automated fixes, and notifications are not
 implemented. See [all collection and analysis limits](docs/limitations.md) and the
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
-A draft [runbook corpus](docs/knowledge.md) prepares future RAG work.
-Runbook retrieval and model integration are not implemented yet.
+A draft [knowledge corpus](docs/knowledge.md) supports local Markdown, HTML, and
+text-native PDF extraction. Retrieval and model integration are not implemented yet.
 
 ## Guides
 
