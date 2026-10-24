@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "include_runbooks": true,
+  "documents": [
+    {
+      "id": "service-overview",
+      "title": "Local order-service overview",
+      "document_type": "architecture",
+      "service": "order-service",
+      "environment": "local",
+      "owner": "project-maintainer",
+      "version": 1,
+      "status": "draft",
+      "reviewed_by": null,
+      "file": "knowledge/service-overview.html"
+    },
+    {
+      "id": "configuration-reference",
+      "title": "Local demo configuration reference",
+      "document_type": "configuration",
+      "service": "order-service",
+      "environment": "local",
+      "owner": "project-maintainer",
+      "version": 1,
+      "status": "draft",
+      "reviewed_by": null,
+      "file": "knowledge/configuration-reference.pdf"
+    }
+  ]
+}

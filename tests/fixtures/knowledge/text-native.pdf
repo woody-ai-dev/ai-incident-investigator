@@ -1,0 +1,151 @@
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document (opensource)
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 9 0 R /MediaBox [ 0 0 612 792 ] /Parent 8 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/Contents 10 0 R /MediaBox [ 0 0 612 792 ] /Parent 8 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+6 0 obj
+<<
+/PageMode /UseNone /Pages 8 0 R /Type /Catalog
+>>
+endobj
+7 0 obj
+<<
+/Author (AI Incident Investigator - synthetic local demo) /CreationDate (D:20000101000000+00'00') /Creator (anonymous) /Keywords () /ModDate (D:20000101000000+00'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (unspecified) /Title (Native PDF extraction test fixture) /Trapped /False
+>>
+endobj
+8 0 obj
+<<
+/Count 2 /Kids [ 4 0 R 5 0 R ] /Type /Pages
+>>
+endobj
+9 0 obj
+<<
+/Length 1150
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+.137255 .341176 .517647 rg
+BT /F2 10 Tf 12 TL ET
+BT 1 0 0 1 54 748 Tm (AI INCIDENT INVESTIGATOR) Tj T* ET
+.392157 .454902 .545098 rg
+BT /F1 9 Tf 10.8 TL ET
+BT 1 0 0 1 54 728 Tm (Committed test fixture | two text-native pages) Tj T* ET
+.078431 .168627 .254902 rg
+BT /F2 19 Tf 22.8 TL ET
+BT 1 0 0 1 54 682 Tm (Configuration fixture - page one) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 634 Tm (Fixture identifier: native-text-config-page-1) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 599 Tm (LLM_ENABLED=false disables model analysis.) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 564 Tm (PROMETHEUS_URL selects the configured metrics server.) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 529 Tm (This file has an embedded text layer and contains no scanned text.) Tj T* ET
+.854902 .890196 .917647 RG
+n 54 64 m 558 64 l S
+.392157 .454902 .545098 rg
+BT /F1 9 Tf 10.8 TL ET
+BT 1 0 0 1 54 45 Tm (Synthetic documentation - not incident evidence) Tj T* ET
+BT 1 0 0 1 540.486 45 Tm (1 / 2) Tj T* ET
+ 
+endstream
+endobj
+10 0 obj
+<<
+/Length 1167
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+.137255 .341176 .517647 rg
+BT /F2 10 Tf 12 TL ET
+BT 1 0 0 1 54 748 Tm (AI INCIDENT INVESTIGATOR) Tj T* ET
+.392157 .454902 .545098 rg
+BT /F1 9 Tf 10.8 TL ET
+BT 1 0 0 1 54 728 Tm (Committed test fixture | two text-native pages) Tj T* ET
+.078431 .168627 .254902 rg
+BT /F2 19 Tf 22.8 TL ET
+BT 1 0 0 1 54 682 Tm (Interpretation fixture - page two) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 634 Tm (Fixture identifier: native-text-limits-page-2) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 599 Tm (Actuator snapshots describe the current observed state.) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 564 Tm (Successful scrape evaluations do not prove business health.) Tj T* ET
+.141176 .215686 .27451 rg
+BT /F1 11 Tf 13.2 TL ET
+BT 1 0 0 1 54 529 Tm (This is a deterministic parser fixture, not an incident report.) Tj T* ET
+.854902 .890196 .917647 RG
+n 54 64 m 558 64 l S
+.392157 .454902 .545098 rg
+BT /F1 9 Tf 10.8 TL ET
+BT 1 0 0 1 54 45 Tm (Synthetic documentation - not incident evidence) Tj T* ET
+BT 1 0 0 1 540.486 45 Tm (2 / 2) Tj T* ET
+ 
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000061 00000 n 
+0000000102 00000 n 
+0000000209 00000 n 
+0000000321 00000 n 
+0000000514 00000 n 
+0000000708 00000 n 
+0000000776 00000 n 
+0000001101 00000 n 
+0000001166 00000 n 
+0000002367 00000 n 
+trailer
+<<
+/ID 
+[<96d6f0a6888384120ecd187d57233a42><96d6f0a6888384120ecd187d57233a42>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 7 0 R
+/Root 6 0 R
+/Size 11
+>>
+startxref
+3586
+%%EOF

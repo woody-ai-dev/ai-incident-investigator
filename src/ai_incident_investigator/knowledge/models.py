@@ -21,7 +21,7 @@ class KnowledgeModel(BaseModel):
     )
 
 
-class RunbookMetadata(KnowledgeModel):
+class DocumentMetadata(KnowledgeModel):
     id: Identifier
     title: NonEmptyText
     service: Identifier
@@ -30,20 +30,23 @@ class RunbookMetadata(KnowledgeModel):
     version: Annotated[int, Field(strict=True, ge=1)]
     status: Literal["draft", "approved"]
     reviewed_by: NonEmptyText | None = None
-    file: Annotated[
-        str,
-        Field(pattern=r"^[a-z][a-z0-9-]{0,63}\.md$"),
-    ]
 
     @model_validator(mode="after")
     def validate_review(self) -> Self:
         if self.status == "approved" and self.reviewed_by is None:
-            raise ValueError("Approved runbooks require reviewed_by")
+            raise ValueError("Approved documents require reviewed_by")
 
         if self.status == "draft" and self.reviewed_by is not None:
-            raise ValueError("Draft runbooks must not declare reviewed_by")
+            raise ValueError("Draft documents must not declare reviewed_by")
 
         return self
+
+
+class RunbookMetadata(DocumentMetadata):
+    file: Annotated[
+        str,
+        Field(pattern=r"^[a-z][a-z0-9-]{0,63}\.md$"),
+    ]
 
 
 class RunbookCatalog(KnowledgeModel):

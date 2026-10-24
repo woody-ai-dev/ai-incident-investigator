@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Local order-service overview</title>
+  </head>
+  <body>
+    <main>
+      <h1>Local order-service overview</h1>
+      <p>This document describes the synthetic local demo.</p>
+      <h2>Responsibilities</h2>
+      <p>The service accepts order requests and simulates a payment gateway.</p>
+      <p>The demo does not contact a real external payment provider.</p>
+      <h2>Telemetry</h2>
+      <table>
+        <tr><th>Source</th><th>Meaning</th></tr>
+        <tr><td>JSONL logs</td><td>Historical application records</td></tr>
+        <tr><td>Actuator</td><td>Current service snapshots</td></tr>
+      </table>
+      <h2>Local diagnostic example</h2>
+      <pre><code>curl  http://127.0.0.1:8081/actuator/health</code></pre>
+      <h2>Operational limits</h2>
+      <p>A successful scrape does not prove successful order processing.</p>
+      <p>This document provides context, not evidence of the current incident.</p>
+    </main>
+  </body>
+</html>
