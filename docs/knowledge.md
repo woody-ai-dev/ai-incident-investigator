@@ -168,3 +168,29 @@ block network connections and do not download models. Without that extra,
 and Markdown-only workflow retain their base dependencies. Corpus tests do not
 require a model key, database, or running service. PostgreSQL tests have their
 separate database requirements described in [persistence](persistence.md#test-databases).
+
+## Retrieval chunk preparation
+
+Run `uv run --locked --extra ingestion python scripts/prepare_knowledge.py` to prepare
+approved documents, or add `--include-drafts` for explicit preview. All committed
+documents are drafts, so the default output is empty.
+
+The initial policy limits each chunk to 2,000 Python characters. `--max-characters`
+accepts values from 64 through 6,000. This is a character budget, not a model token
+budget. Prose uses semchunk without overlap; short adjacent extraction blocks are
+not merged. Markdown fences, indented code and pipe tables, plus extracted
+HTML/PDF code and tables, remain whole. Oversized protected elements fail clearly.
+
+Each chunk retains metadata, the original source hash, extractor and chunker
+versions, library versions, policy, extraction notes, and its original block
+location. Character offsets `[start_char, end_char)` refer to extracted block text,
+not original PDF bytes or HTML source. Markdown locations still identify the whole
+source block; they are not narrowed to invented subchunk line ranges. Splitter
+whitespace between prose fragments can be omitted; each returned fragment remains
+an exact source slice.
+
+Chunk IDs include content, metadata, policy, provenance and processing versions.
+Changing these inputs changes the identity. Preview output remains draft context.
+Embedding input assembly must enforce its selected model's token budget, including
+any added titles or prefixes. Retrieval quality and chunk-size tuning require
+subsequent evaluation.
