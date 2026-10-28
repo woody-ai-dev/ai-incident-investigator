@@ -3,7 +3,8 @@
 The local corpus contains Markdown runbooks, an HTML service overview, and a
 text-native PDF configuration reference. It prepares future retrieval-augmented
 investigation; the investigation pipeline does not consume these documents yet.
-Embeddings, a search index, reranking, and model integration are not implemented.
+Dense retrieval is available through a separate CLI. Reranking and integration
+with incident generation are not implemented.
 
 ## Catalogs and review
 
@@ -74,7 +75,7 @@ uv run --locked python scripts/ingest_runbooks.py --include-drafts
 Install the optional document dependencies:
 
 ```bash
-uv sync --locked --dev --extra ingestion
+uv sync --locked --dev --extra ingestion --extra retrieval
 ```
 
 `load_knowledge_corpus()` validates the combined catalog metadata, then reads and
@@ -132,7 +133,7 @@ not guarantee complete context.
 
 `evals/knowledge-retrieval.json` records future relevance labels. Positive labels
 express semantic relevance within a scope independently of approval status.
-Current checks validate labels and references. They do not run retrieval or
+Current label checks validate labels and references. They do not run retrieval or
 establish Recall@k, ranking quality, or model accuracy. Existing pipeline and
 metric-boundary evaluation remain the baseline for telemetry preservation;
 semantic model quality requires separate review.
@@ -147,27 +148,30 @@ original source hash, and page attribution.
 Run the full Python checks, including real offline conversion:
 
 ```bash
-uv sync --locked --dev --extra ingestion
-uv run --locked --extra ingestion ruff format --check .
-uv run --locked --extra ingestion ruff check .
-uv run --locked --extra ingestion mypy
-uv run --locked --extra ingestion pytest
+uv sync --locked --dev --extra ingestion --extra retrieval
+uv run --locked --extra ingestion --extra retrieval ruff format --check .
+uv run --locked --extra ingestion --extra retrieval ruff check .
+uv run --locked --extra ingestion --extra retrieval mypy
+uv run --locked --extra ingestion --extra retrieval pytest
 ```
 
 To include PostgreSQL tests in the same run, start Docker and use:
 
 ```bash
-bash scripts/test_with_postgres.sh --with-ingestion
+bash scripts/test_with_postgres.sh --with-ingestion --with-retrieval
 ```
 
 The script creates an isolated database and removes its container afterwards.
 
-CI installs the ingestion extra before type checking and tests. Conversion tests
-block network connections and do not download models. Without that extra,
-`document_conversion` tests are skipped; full type checking requires it. The API
-and Markdown-only workflow retain their base dependencies. Corpus tests do not
-require a model key, database, or running service. PostgreSQL tests have their
-separate database requirements described in [persistence](persistence.md#test-databases).
+CI installs both `ingestion` and `retrieval` extras before full type checking and
+tests. Conversion tests block network connections and do not download models.
+Without `ingestion`, `document_conversion` tests are skipped; without `retrieval`,
+retrieval tests are skipped. Full type checking requires both extras. The API and
+Markdown-only workflow retain their base dependencies. Corpus tests do not require
+a model key, database, or running service. PostgreSQL tests have their separate
+database requirements described in [persistence](persistence.md#test-databases).
+Qdrant server tests require `TEST_QDRANT_URL`; the PostgreSQL helper does not start
+Qdrant, so those tests are skipped unless a dedicated test instance is provided.
 
 ## Retrieval chunk preparation
 
@@ -194,3 +198,64 @@ Changing these inputs changes the identity. Preview output remains draft context
 Embedding input assembly must enforce its selected model's token budget, including
 any added titles or prefixes. Retrieval quality and chunk-size tuning require
 subsequent evaluation.
+
+## Dense retrieval with Qdrant
+
+Install the ingestion and retrieval extras for full checks. Qdrant stores derived
+vectors and filter metadata; original files remain the source of document text.
+The incident API does not call this retrieval code yet.
+
+Start only Qdrant with the knowledge Compose overlay:
+
+```bash
+docker compose -f compose.yaml -f compose.knowledge.yaml up -d qdrant
+```
+
+Index approved documents, or explicitly use the separate preview namespace:
+
+```bash
+uv run --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py index
+
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py index --include-drafts
+
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py search --include-drafts \
+  --query "payment timeout" --service order-service --environment local
+```
+
+The preview commands need `OPENAI_API_KEY`. They send embedding text (title,
+section and content) or the search query to OpenAI and incur embedding API usage.
+`LLM_ENABLED` controls incident generation; this explicit CLI operation is separate.
+Successful CLI output reports `embedding_total_tokens`; it is not a billing ledger.
+Embedding usage is not yet included in the investigation usage dashboard. An empty
+eligible corpus requires neither an API key nor a Qdrant connection.
+
+The baseline uses text-embedding-3-small, 1536 dimensions and cosine similarity.
+The cl100k_base tokenizer checks the complete embedding input against 8192 tokens.
+Inputs are rejected rather than truncated. The tokenizer may fetch its vocabulary
+on first use; it does not download model weights. Unit tests inject a token counter
+and mocked SDK HTTP transport, so ordinary tests need no OpenAI access or downloads.
+The model name is recorded; it is not a separately pinned dated model snapshot.
+
+Each collection name identifies current chunk IDs, embedding configuration and
+approved/preview mode. Search recomputes the current corpus and refuses a missing
+or incomplete snapshot. Changes, removals and review status changes therefore
+require a new index; old collections cannot silently serve a newer corpus. Empty
+approved input never falls back to preview. Returned text and citations come from
+the current local chunks, while Qdrant supplies scores and chunk references.
+
+This small-corpus implementation re-extracts documents for each CLI invocation.
+Use one index builder per snapshot. Completed snapshots are reused without more
+embedding calls; failed partial builds can be retried. Old collections are retained
+for explicit cleanup, and no active collection is automatically deleted.
+
+The character chunk policy remains an authoring baseline. Retrieval size, overlap,
+ranking thresholds and model quality are not optimized by these storage tests.
+Nearest neighbors are suggestions, not proof of relevance or telemetry evidence.
+
+CI runs real Qdrant Local tests and a separate Qdrant server contract test, both
+with deterministic fixture vectors. These verify index behavior, not semantic
+quality. To run the server check locally, point TEST_QDRANT_URL at a dedicated test
+instance and run `uv run --locked --extra retrieval pytest -m qdrant_server`.
