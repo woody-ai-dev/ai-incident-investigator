@@ -128,17 +128,18 @@ workflow before merge; open the badge to inspect individual job results.
 Run Python checks:
 
 ```bash
-uv sync --locked --dev --extra ingestion
-uv run --locked --extra ingestion ruff format --check .
-uv run --locked --extra ingestion ruff check .
-uv run --locked --extra ingestion mypy
-uv run --locked --extra ingestion pytest
+uv sync --locked --dev --extra ingestion --extra retrieval
+uv run --locked --extra ingestion --extra retrieval ruff format --check .
+uv run --locked --extra ingestion --extra retrieval ruff check .
+uv run --locked --extra ingestion --extra retrieval mypy
+uv run --locked --extra ingestion --extra retrieval pytest
 ```
 
-The optional `ingestion` dependencies are needed for full type checking and offline
-HTML/PDF conversion tests. The normal API and Markdown ingestion use the base
-environment. Conversion tests read committed fixtures and do not download models or
-access the network; see the [knowledge ingestion guide](knowledge.md).
+The optional `ingestion` dependencies enable offline HTML/PDF conversion tests.
+The `retrieval` extra enables Qdrant tests. Full type checking requires both extras.
+The normal API and Markdown ingestion use the base environment. Conversion tests
+read committed fixtures and do not download models or access the network; see the
+[knowledge ingestion guide](knowledge.md).
 
 GitHub Actions runs these validation jobs on pull requests and pushes to main:
 
@@ -146,6 +147,7 @@ GitHub Actions runs these validation jobs on pull requests and pushes to main:
   conversion, and coverage reports.
 - Gitleaks scanning of the full Git history with redacted findings.
 - PostgreSQL integration tests using a dedicated database and per-test schemas.
+- Qdrant server contract tests using deterministic fixture vectors and a dedicated service.
 - Java tests and the Java-to-Python log contract check.
 - Frontend formatting, linting, component and browser tests, E2E type checks, and production builds.
 - Docker image builds, Prometheus configuration validation, all four telemetry

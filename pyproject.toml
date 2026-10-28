@@ -27,6 +27,11 @@ ingestion = [
     "docling-core>=2.104.0",
 ]
 
+retrieval = [
+    "qdrant-client==1.18.0",
+    "tiktoken==0.14.0",
+]
+
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
 build-backend = "uv_build"
@@ -48,6 +53,7 @@ pythonpath = ["."]
 markers = [
     "postgres: requires a dedicated PostgreSQL test database",
     "document_conversion: requires the ingestion extra",
+    "qdrant_server: requires a dedicated TEST_QDRANT_URL",
 ]
 
 [tool.ruff]

@@ -16,12 +16,21 @@ command -v uv >/dev/null || {
 
 docker info >/dev/null
 
-# Include offline HTML/PDF checks when explicitly requested.
+# Include optional document and retrieval checks when explicitly requested.
 UV_ARGS=(--locked)
-if [[ "${1:-}" == "--with-ingestion" ]]; then
-  UV_ARGS+=(--extra ingestion)
-  shift
-fi
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --with-ingestion)
+      UV_ARGS+=(--extra ingestion)
+      shift
+      ;;
+    --with-retrieval)
+      UV_ARGS+=(--extra retrieval)
+      shift
+      ;;
+    *) break ;;
+  esac
+done
 
 # Install the locked project and development dependencies.
 uv sync "${UV_ARGS[@]}" --dev

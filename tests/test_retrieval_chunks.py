@@ -112,7 +112,7 @@ def test_chunk_identity_is_deterministic_and_carries_document_provenance() -> No
     assert chunk.document == document.metadata
     assert chunk.source_sha256 == document.source_sha256
     assert chunk.extractor == document.extractor
-    assert chunk.chunker_version == "retrieval-characters-v1"
+    assert chunk.chunker_version == "retrieval-characters-v2"
     assert chunk.libraries
     assert chunk.policy == ChunkingPolicy()
     assert chunk.section == document.blocks[0].section
@@ -277,3 +277,53 @@ def test_whitespace_blocks_are_skipped_without_renumbering_source_blocks() -> No
 def test_document_without_usable_text_fails() -> None:
     with pytest.raises(ChunkingError):
         prepare_document_chunks(make_document(" \n\t "))
+
+
+@pytest.mark.parametrize(
+    "line_endings",
+    [("\n",), ("\r\n",), ("\r",), ("\n", "\r\n", "\r")],
+    ids=["lf", "crlf", "cr", "mixed"],
+)
+@pytest.mark.parametrize(
+    "atomic_lines",
+    [
+        ("```python", "  value = 'first\u2028second'", "  print(value)", "```"),
+        ("| Signal | Meaning |", "| --- | --- |", "| Logs | First\u2028second |"),
+    ],
+    ids=["fence", "table"],
+)
+def test_markdown_line_endings_preserve_atomic_elements_and_exact_source_offsets(
+    line_endings: tuple[str, ...],
+    atomic_lines: tuple[str, ...],
+) -> None:
+    lines = ("Introduction.", "", *atomic_lines, "", "Follow-up checks.")
+    source_lines = tuple(
+        line + line_endings[index % len(line_endings)] for index, line in enumerate(lines)
+    )
+    content = "".join(source_lines)
+    atomic = "".join(source_lines[2 : 2 + len(atomic_lines)])
+    document = make_document(content)
+
+    chunks = prepare_document_chunks(document, policy=ChunkingPolicy(max_characters=128))
+
+    assert any(atomic in chunk.content for chunk in chunks)
+    assert all(
+        chunk.content == content[chunk.source.start_char : chunk.source.end_char]
+        for chunk in chunks
+    )
+    covered = {
+        index for chunk in chunks for index in range(chunk.source.start_char, chunk.source.end_char)
+    }
+    assert {index for index, char in enumerate(content) if not char.isspace()} <= covered
+
+
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n", "\r"])
+def test_unterminated_final_markdown_line_preserves_exact_code_range(line_ending: str) -> None:
+    content = line_ending.join(("```python", "print('example')", "```"))
+
+    chunks = prepare_document_chunks(make_document(content))
+
+    assert len(chunks) == 1
+    assert chunks[0].content == content
+    assert chunks[0].source.start_char == 0
+    assert chunks[0].source.end_char == len(content)

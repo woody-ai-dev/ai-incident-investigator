@@ -314,11 +314,11 @@ For React development and browser checks, see [UI development](docs/ui-developme
 ## Checks and CI
 
 ```bash
-uv sync --locked --dev --extra ingestion
-uv run --locked --extra ingestion ruff format --check .
-uv run --locked --extra ingestion ruff check .
-uv run --locked --extra ingestion mypy
-uv run --locked --extra ingestion pytest
+uv sync --locked --dev --extra ingestion --extra retrieval
+uv run --locked --extra ingestion --extra retrieval ruff format --check .
+uv run --locked --extra ingestion --extra retrieval ruff check .
+uv run --locked --extra ingestion --extra retrieval mypy
+uv run --locked --extra ingestion --extra retrieval pytest
 
 npm --prefix frontend run format:check
 npm --prefix frontend run lint
@@ -329,9 +329,9 @@ npm --prefix frontend run build
 Ordinary tests and CI do not call a live model. CI covers Python, PostgreSQL, Java,
 frontend/browser checks, and the container demo. PostgreSQL tests require a dedicated
 test database; without it, those cases are skipped locally. The optional `ingestion`
-dependencies enable offline HTML/PDF conversion checks and are required for the full
-type-checking run. The running API does not need them. See [CI
-details](docs/development.md#checks-and-ci),
+dependencies enable offline HTML/PDF conversion checks. The `retrieval` extra
+enables Qdrant checks. Both extras are required for the full type-checking run.
+The running API does not need them. See [CI details](docs/development.md#checks-and-ci),
 [persistence tests](docs/persistence.md#test-databases),
 [browser checks](docs/ui-development.md#browser-end-to-end-checks), and
 [offline/live evaluation](docs/pipeline-evaluation.md).
@@ -345,11 +345,13 @@ success does not establish business health.
 
 Model output still requires engineering review. Saved history and shareable report
 pages require optional PostgreSQL storage. Without it, the workspace keeps its latest
-report only in memory. Queues, traces, RAG, automated fixes, and notifications are not
-implemented. See [all collection and analysis limits](docs/limitations.md) and the
+report only in memory. Queues, traces, retrieval-augmented incident generation,
+automated fixes, and notifications are not implemented. See
+[all collection and analysis limits](docs/limitations.md) and the
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
 A draft [knowledge corpus](docs/knowledge.md) supports local Markdown, HTML, and
-text-native PDF extraction. Retrieval and model integration are not implemented yet.
+text-native PDF extraction and a separate dense-search CLI backed by Qdrant.
+The investigation pipeline does not consume retrieved documents yet.
 
 ## Guides
 
