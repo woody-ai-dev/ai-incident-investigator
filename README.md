@@ -22,6 +22,8 @@ remediation is not implemented.
 | Backend | Python 3.12+, FastAPI, Pydantic, HTTPX, Uvicorn |
 | Persistence | PostgreSQL 17, SQLAlchemy 2, Psycopg 3, Alembic |
 | AI analysis | OpenAI Python SDK, Responses API, structured outputs, provider usage |
+| Knowledge ingestion | markdown-it-py, Docling for HTML/text-native PDF, semchunk |
+| Knowledge retrieval | Qdrant 1.18, OpenAI embeddings, text-embedding-3-small, tiktoken |
 | Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod, CSS chart animations |
 | Telemetry | JSONL logs, Prometheus, Spring Boot Actuator, Micrometer |
 | Demo service | Java 25, Spring Boot 4, Maven Wrapper |
@@ -67,6 +69,10 @@ Only implemented technologies are listed here. Planned capabilities are describe
 - Python and frontend tests, Java API tests, and telemetry integration checks.
 - An opt-in LLM evaluation runner with repeatable scenarios, run metadata, and checkpoints.
 - Offline validation of separately recorded manual reviews of saved model outputs.
+- Local Markdown, HTML, and text-native PDF extraction with source provenance and retrieval chunks.
+- Separate Qdrant indexing and search CLIs with exact service/environment filters,
+  approved documents by default, and an explicit draft-preview mode.
+- Opt-in retrieval evaluation using document labels, Recall@k, and MRR@k at chunk ranks.
 
 With analysis disabled, reports contain evidence and data gaps, with empty findings and
 hypotheses. A structurally valid model report does not prove that its explanation is
@@ -110,6 +116,10 @@ See the
 
 [Editable draw.io diagram](docs/architecture/architecture.drawio)
 
+The v0.2 diagram covers the investigation API and its persistence workflow. The
+separate knowledge CLI flow is shown below; retrieved documents do not enter
+incident generation yet.
+
 The investigator reads the shared log file, queries the Prometheus HTTP API, and
 retrieves Actuator context when an investigation is requested and those sources are
 configured. Prometheus scrapes the Java service every five seconds independently of
@@ -140,6 +150,35 @@ any supported price snapshot. The store saves the report and its normalized usag
 in one transaction. A separate `UsageReader` port serves UTC aggregates for `GET /usage`;
 history and usage reads never invoke collectors or a model. Unknown usage and prices
 remain unknown.
+
+### Knowledge CLI flow
+
+```mermaid
+flowchart LR
+    sources["Catalogued Markdown / HTML / PDF"] --> extract["Local extraction"]
+    extract --> chunks["Current chunks and provenance"]
+    chunks --> embed["OpenAI document embeddings"]
+    embed -->|index| qdrant[(Qdrant snapshot)]
+    query["Search or evaluation query"] --> query_embed["OpenAI query embedding"]
+    query_embed -->|search| qdrant
+    qdrant -->|chunk IDs and scores| resolve["Resolve current chunk text"]
+    chunks --> resolve
+    resolve --> results["Ranked chunks"]
+    results --> metrics["Recall@k / MRR@k"]
+    labels["Manual document labels"] --> metrics
+```
+
+Markdown parsing uses markdown-it-py; HTML and text-native PDF extraction use
+Docling. semchunk splits prose while protected code and tables stay whole.
+tiktoken checks embedding inputs before OpenAI requests. Qdrant stores vectors
+and filter metadata; returned text and provenance come from the current local
+chunks. PostgreSQL continues to store investigation snapshots and usage.
+
+`scripts/evaluate_knowledge.py` searches an existing snapshot and writes a JSON
+report to stdout. It scores document labels at the returned chunk ranks and records
+dataset, corpus, and embedding fingerprints. Indexing, search, and evaluation are explicit
+CLI operations with embedding API usage. See the [knowledge guide](docs/knowledge.md)
+for setup, commands, preview boundaries, and metric definitions.
 
 ### Source collection outcomes
 
@@ -200,6 +239,9 @@ currently covers `gpt-4.1-mini-2025-04-14`. Unknown models, tiers, or missing us
 remain unpriced. Failed or rejected answers retain any usage reported by the provider.
 Older investigations have no invented usage. See the
 [live accounting validation](docs/usage-validation.md) for a real-call check.
+
+Knowledge CLI commands report successful embedding token totals separately.
+Those embedding calls are not included in the investigation Usage dashboard.
 
 ## Quick start with Docker Compose
 
@@ -336,6 +378,10 @@ The running API does not need them. See [CI details](docs/development.md#checks-
 [browser checks](docs/ui-development.md#browser-end-to-end-checks), and
 [offline/live evaluation](docs/pipeline-evaluation.md).
 
+Retrieval tests use deterministic fixture vectors and do not call OpenAI. Running
+the opt-in retrieval evaluator with real embeddings is separate from CI; its
+retrieval metrics describe the small labelled dataset rather than production accuracy.
+
 ## Current limits
 
 The assistant runs on request and does not monitor services autonomously. Telemetry is
@@ -351,7 +397,9 @@ automated fixes, and notifications are not implemented. See
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
 A draft [knowledge corpus](docs/knowledge.md) supports local Markdown, HTML, and
 text-native PDF extraction and a separate dense-search CLI backed by Qdrant.
-The investigation pipeline does not consume retrieved documents yet.
+Retrieval evaluation reports a baseline on manual document labels. Reranking,
+calibrated relevance thresholds, and generation from retrieved context remain
+unimplemented; the investigation pipeline does not consume retrieved documents yet.
 
 ## Guides
 
@@ -379,6 +427,7 @@ to point to the matching guide.
 | [Saved investigations](docs/persistence.md) | PostgreSQL, migrations, API, metadata, and tests |
 | [Analysis boundaries](docs/analysis-boundaries.md) | Evidence IDs, temporal support, and metric interpretation |
 | [Model evaluation procedure](docs/llm-evaluation.md) | Live run artifacts, review, and release checks |
+| [Knowledge ingestion and retrieval](docs/knowledge.md) | Document review, extraction, Qdrant CLI, and retrieval evaluation |
 | [Demo recording](docs/demo.md) | Walkthrough and opt-in recording procedure |
 | [Release guide](docs/releasing.md) | Versioning and GitHub publication |
 
@@ -388,13 +437,19 @@ The v0.2 feature set includes persistent investigation snapshots, filtered histo
 source outcomes and timing, token/cost accounting, and clearer reports. See the
 [v0.2.0 release notes](docs/releases/v0.2.0.md) for scope and upgrade instructions.
 
+The v0.3 development track prepares operational knowledge for retrieval-augmented
+investigation. Document extraction, chunk preparation, Qdrant search, and an opt-in
+retrieval evaluator are available as separate CLIs. Broader relevance labels and
+retrieval tuning should guide the later integration of reviewed context into reports.
+
 Next work should broaden evaluation on unseen incidents and improve remaining metric
 interpretation errors. Recorded technical passes are not a production-accuracy claim.
 Background jobs and idempotent submission would let the API handle longer investigations
 without repeating billable work when a client retries.
 
 Later work may add centralized telemetry, traces, background jobs, alert-triggered
-investigations, and retrieval of operational knowledge. A remediation stage would
+investigations, and integration of retrieved operational knowledge into analysis.
+A remediation stage would
 reproduce bugs in an isolated checkout, validate candidate patches, and open pull
 requests for human review. These capabilities are planned. See the [release
 guide](docs/releasing.md) for release preparation.

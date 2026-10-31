@@ -131,12 +131,13 @@ when model integration is introduced. Search-time context assembly must retain
 relevant interpretation and operational limits; section splitting alone does
 not guarantee complete context.
 
-`evals/knowledge-retrieval.json` records future relevance labels. Positive labels
+`evals/knowledge-retrieval.json` records document relevance labels. Positive labels
 express semantic relevance within a scope independently of approval status.
-Current label checks validate labels and references. They do not run retrieval or
-establish Recall@k, ranking quality, or model accuracy. Existing pipeline and
-metric-boundary evaluation remain the baseline for telemetry preservation;
-semantic model quality requires separate review.
+Static label checks validate labels and references. The retrieval evaluation CLI
+below measures Recall@k and reciprocal rank against this small labeled dataset.
+These labels do not establish relevance for every chunk of a document. Existing
+pipeline and metric-boundary evaluation remain the baseline for telemetry
+preservation; generation quality requires separate review.
 
 ## Fixtures and checks
 
@@ -259,3 +260,49 @@ CI runs real Qdrant Local tests and a separate Qdrant server contract test, both
 with deterministic fixture vectors. These verify index behavior, not semantic
 quality. To run the server check locally, point TEST_QDRANT_URL at a dedicated test
 instance and run `uv run --locked --extra retrieval pytest -m qdrant_server`.
+
+## Retrieval evaluation
+
+Evaluate the already-built current snapshot with the committed query labels:
+
+```bash
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/evaluate_knowledge.py --include-drafts --k 5
+```
+
+This explicit command can make billable embedding API requests for scoped queries.
+It does not build or modify the index. Run the index command first with the same
+corpus mode and character budget. All committed positive examples are drafts;
+without `--include-drafts`, missing positive documents are an error before any
+external client is created. Approval is never changed automatically.
+
+The command prints one JSON report after a complete successful evaluation. It
+records dataset/corpus fingerprints, collection, embedding configuration, chunk
+policy, token usage, source chunks, per-case metrics, and macro averages. Exit 0
+means the evaluation completed; it does not mean a quality threshold was passed.
+No quality threshold is configured in this baseline.
+
+`k` is a chunk cutoff from 1 through 20. Labels refer to documents. Recall@k is
+the fraction of labeled documents represented in those chunks, counted once per
+document. Reciprocal rank is 1 divided by the first relevant chunk's rank, or 0
+if no relevant chunk was retrieved. Mean reciprocal rank averages that value over
+positive cases. Duplicate chunks of one document do not increase Recall and are
+not removed before computing rank.
+
+Cases with no positive labels have null Recall and reciprocal rank and are
+excluded from both averages. The report retains their candidates for inspection.
+A query for a scope absent from the corpus returns no candidates without a model
+call. A same-scope query with no relevant document can return nearest neighbors;
+this baseline does not implement calibrated abstention.
+
+The current dataset contains six hand-written queries and three labeled runbooks.
+Document labels are coarse: finding any chunk of a relevant document does not
+prove that the exact needed passage was found. Scores describe this small dataset,
+not general retrieval accuracy or generated-answer quality.
+
+CI tests use supplied rankings and Qdrant Local with deterministic fixture vectors.
+They verify formulas and integration without calling a live model. To compare
+chunking policies, rebuild each current snapshot and evaluate with matching
+`--max-characters` settings. Keep labels and embedding configuration fixed while
+changing one parameter. Reranking, hybrid retrieval and generation evaluation
+remain separate work.

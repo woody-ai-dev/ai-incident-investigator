@@ -1,10 +1,8 @@
 import json
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal
 
 import pytest
-from pydantic import Field
 
 from ai_incident_investigator.knowledge.loader import (
     MAX_RUNBOOK_BYTES,
@@ -12,10 +10,7 @@ from ai_incident_investigator.knowledge.loader import (
     approved_runbooks,
     load_corpus,
 )
-from ai_incident_investigator.knowledge.models import (
-    Identifier,
-    KnowledgeModel,
-)
+from ai_incident_investigator.knowledge.retrieval_evaluation import RetrievalDataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -269,19 +264,6 @@ def test_documents_are_returned_in_stable_id_order(tmp_path: Path) -> None:
         "aaa-runbook",
         "payment-timeout",
     ]
-
-
-class RetrievalCase(KnowledgeModel):
-    id: Identifier
-    query: str = Field(min_length=1, max_length=1000)
-    service: Identifier
-    environment: Identifier
-    relevant_document_ids: tuple[Identifier, ...]
-
-
-class RetrievalDataset(KnowledgeModel):
-    schema_version: Literal[1]
-    cases: tuple[RetrievalCase, ...] = Field(min_length=1)
 
 
 def test_repository_corpus_and_retrieval_labels_are_consistent() -> None:
