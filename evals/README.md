@@ -84,3 +84,12 @@ An additional [metric interpretation regression suite](metric-boundaries.md)
 covers scrape success versus business failure, heap summaries without baselines,
 cumulative counters, and incomplete scrape coverage. Its offline results also
 check pipeline contracts rather than natural-language correctness.
+
+## Knowledge retrieval
+
+`knowledge-retrieval.json` labels documents for six retrieval queries. The separate
+`scripts/evaluate_knowledge.py` command evaluates the existing Qdrant snapshot and
+can make billable query-embedding requests. It is an explicit manual operation;
+ordinary CI tests use deterministic rankings and vectors. See the [retrieval
+evaluation guide](../docs/knowledge.md#retrieval-evaluation) for commands, metric
+units, preview mode, and limitations.
