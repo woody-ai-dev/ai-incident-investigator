@@ -306,3 +306,50 @@ chunking policies, rebuild each current snapshot and evaluate with matching
 `--max-characters` settings. Keep labels and embedding configuration fixed while
 changing one parameter. Reranking, hybrid retrieval and generation evaluation
 remain separate work.
+
+## Knowledge context assembly
+
+The `context` subcommand searches the current snapshot and assembles whole chunks:
+
+```bash
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py context --include-drafts \
+  --query "payment timeout" --service order-service --environment local \
+  --limit 10 --context-max-chunks 3 --context-max-bytes 12000
+```
+
+Build the matching index first with the same corpus mode and `--max-characters`.
+The command can make a billable query-embedding request. An empty eligible corpus
+needs no API key or Qdrant connection and produces an empty scoped context.
+
+`--limit` bounds retrieved candidates, while `--context-max-chunks` bounds selected
+chunks. Both accept values from 1 through 20. The context byte budget defaults to
+12000 and accepts values from 512 through 24000. These are initial operational
+bounds, not empirically optimized retrieval settings or model token limits.
+
+The output's `assembly.context` records scope, approved/preview mode and full source
+chunks, including scores, source hashes and extraction provenance. `payload_bytes`
+counts the UTF-8 bytes of `KnowledgeContext.to_json()`, including JSON structure
+and metadata. The indented CLI report and its diagnostics are outside that budget.
+A future generator must recheck its complete serialized input, including telemetry,
+request, context and instructions, against its own byte and token limits.
+
+All candidates are checked before selection. Wrong scopes, unapproved documents
+outside preview and conflicting content for one chunk ID fail the operation, even
+if that candidate would not fit the budget. Equal duplicate chunks retain their
+first result and are reported as `duplicate`. Whole candidates that do not fit are
+reported as `byte_budget`; candidates after the selected-chunk cap are reported as
+`chunk_limit`. A smaller later candidate may still fit after a larger one is omitted.
+
+Selection preserves result order and source text. It does not truncate or merge
+chunks, introduce a score threshold, or rerank candidates. Exclusion diagnostics
+make the selected input inspectable; they do not establish semantic relevance.
+Preview remains explicit and never changes document approval. The existing
+retrieval evaluator scores raw search candidates; it does not score the smaller
+context after budget selection. Context-level relevance needs separate evaluation.
+
+Document text remains untrusted reference data. Context assembly does not sanitize
+prompt injection or turn a runbook into telemetry evidence. The current API and
+OpenAI analyzer do not consume this contract yet. Typed citations, generator
+instructions, full-input budgeting, persistence and UI support belong to the
+subsequent integration.
