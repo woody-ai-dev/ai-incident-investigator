@@ -29,7 +29,7 @@ def invoke(monkeypatch: pytest.MonkeyPatch, *args: str) -> None:
     runpy.run_path(str(SCRIPT), run_name="__main__")
 
 
-@pytest.mark.parametrize("command", ["index", "search"])
+@pytest.mark.parametrize("command", ["index", "search", "context"])
 def test_empty_corpus_needs_no_provider_or_database(
     command: str,
     empty_root: Path,
@@ -45,18 +45,31 @@ def test_empty_corpus_needs_no_provider_or_database(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr(openai, "OpenAI", forbidden)
     monkeypatch.setattr(qdrant_client, "QdrantClient", forbidden)
+
     extra = (
         ("--query", "heap", "--service", "order-service", "--environment", "local")
-        if command == "search"
+        if command != "index"
         else ()
     )
     invoke(monkeypatch, command, "--root", str(empty_root), *extra)
     result = json.loads(capsys.readouterr().out)
+
     assert result["mode"] == "approved"
     assert result["chunk_count"] == result["embedding_total_tokens"] == 0
     assert result["collection"] is None
+
     if command == "search":
         assert result["hits"] == []
+    elif command == "context":
+        assembly = result["assembly"]
+        assert assembly["context"]["chunks"] == []
+        assert assembly["context"]["mode"] == "approved"
+        assert assembly["omitted"] == []
+        assert assembly["payload_bytes"] == len(
+            json.dumps(assembly["context"], ensure_ascii=False, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        )
 
 
 @pytest.mark.parametrize("limit", ["63", "6001", "invalid"])
@@ -65,6 +78,7 @@ def test_invalid_budget_returns_usage_error(
 ) -> None:
     with pytest.raises(SystemExit) as error:
         invoke(monkeypatch, "index", "--root", str(empty_root), "--max-characters", limit)
+
     assert error.value.code == 2
 
 
@@ -73,10 +87,42 @@ def test_missing_corpus_returns_operation_error(
 ) -> None:
     with pytest.raises(SystemExit) as error:
         invoke(monkeypatch, "index", "--root", str(tmp_path / "missing"))
+
     assert error.value.code == 1
     output = capsys.readouterr()
     assert output.out == ""
     assert "Knowledge operation failed" in output.err
+
+
+@pytest.mark.parametrize(
+    ("flag", "value"),
+    [
+        ("--context-max-bytes", "511"),
+        ("--context-max-bytes", "24001"),
+        ("--context-max-chunks", "0"),
+        ("--context-max-chunks", "21"),
+    ],
+)
+def test_context_policy_is_validated_before_loading_corpus(
+    flag: str, value: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with pytest.raises(SystemExit) as error:
+        invoke(
+            monkeypatch,
+            "context",
+            "--root",
+            str(tmp_path / "missing"),
+            "--query",
+            "heap",
+            "--service",
+            "order-service",
+            "--environment",
+            "local",
+            flag,
+            value,
+        )
+
+    assert error.value.code == 2
 
 
 def test_cli_indexes_and_searches_with_real_qdrant_local(
@@ -117,8 +163,10 @@ def test_cli_indexes_and_searches_with_real_qdrant_local(
             patch.setattr(qdrant_client, "QdrantClient", lambda **kwargs: connection)
             patch.setattr(connection, "close", lambda: None)
             patch.setattr(embeddings, "OpenAIEmbedder", lambda provider: FixtureEmbedder())
+
             invoke(monkeypatch, "index", "--root", str(empty_root))
             indexed = json.loads(capsys.readouterr().out)
+
             invoke(
                 monkeypatch,
                 "search",
@@ -132,8 +180,33 @@ def test_cli_indexes_and_searches_with_real_qdrant_local(
                 "local",
             )
             searched = json.loads(capsys.readouterr().out)
+
             assert indexed["collection"] == searched["collection"]
             assert searched["hits"][0]["chunk"]["document"]["id"] == "cli-example"
             assert searched["embedding_total_tokens"] == 0
+
+            invoke(
+                monkeypatch,
+                "context",
+                "--root",
+                str(empty_root),
+                "--query",
+                "heap",
+                "--service",
+                "order-service",
+                "--environment",
+                "local",
+                "--context-max-chunks",
+                "1",
+            )
+            assembled = json.loads(capsys.readouterr().out)
+
+            assert assembled["collection"] == indexed["collection"]
+            assert "hits" not in assembled
+            context = assembled["assembly"]["context"]
+            assert context["chunks"] == searched["hits"]
+            assert context["mode"] == "approved"
+            assert assembled["assembly"]["payload_bytes"] <= 12000
+            assert assembled["assembly"]["omitted"] == []
     finally:
         connection.close()

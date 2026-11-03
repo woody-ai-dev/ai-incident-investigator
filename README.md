@@ -73,6 +73,7 @@ Only implemented technologies are listed here. Planned capabilities are describe
 - Separate Qdrant indexing and search CLIs with exact service/environment filters,
   approved documents by default, and an explicit draft-preview mode.
 - Opt-in retrieval evaluation using document labels, Recall@k, and MRR@k at chunk ranks.
+- Bounded knowledge-context assembly with whole chunks, source provenance, and omission diagnostics.
 
 With analysis disabled, reports contain evidence and data gaps, with empty findings and
 hypotheses. A structurally valid model report does not prove that its explanation is
@@ -165,6 +166,8 @@ flowchart LR
     chunks --> resolve
     resolve --> results["Ranked chunks"]
     results --> metrics["Recall@k / MRR@k"]
+    results --> assemble["Whole-chunk context assembly"]
+    assemble --> context["Scoped JSON context / UTF-8 byte budget"]
     labels["Manual document labels"] --> metrics
 ```
 
@@ -179,6 +182,11 @@ report to stdout. It scores document labels at the returned chunk ranks and reco
 dataset, corpus, and embedding fingerprints. Indexing, search, and evaluation are explicit
 CLI operations with embedding API usage. See the [knowledge guide](docs/knowledge.md)
 for setup, commands, preview boundaries, and metric definitions.
+
+The `context` command in `scripts/search_knowledge.py` assembles a bounded JSON
+fragment from the current search results. It preserves whole chunks and provenance,
+checks scope and approval, and reports excluded candidates separately. This is a
+context-preparation contract; generated incident reports do not consume it yet.
 
 ### Source collection outcomes
 

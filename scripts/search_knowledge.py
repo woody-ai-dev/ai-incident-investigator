@@ -17,9 +17,16 @@ from ai_incident_investigator.knowledge.retrieval_chunks import (
     ChunkingPolicy,
     prepare_corpus_chunks,
 )
+from ai_incident_investigator.knowledge.retrieval_context import (
+    DEFAULT_CONTEXT_POLICY,
+    ContextError,
+    ContextPolicy,
+    assemble_context,
+)
 from ai_incident_investigator.knowledge.vector_index import (
     KnowledgeIndexError,
     QdrantKnowledgeIndex,
+    SearchHit,
     SearchRequest,
 )
 
@@ -34,14 +41,25 @@ def main() -> None:
     )
     common.add_argument("--max-characters", type=int, default=DEFAULT_POLICY.max_characters)
     common.add_argument("--qdrant-url", default=os.getenv("QDRANT_URL", "http://127.0.0.1:6333"))
-    parser = argparse.ArgumentParser(description="Index or search curated knowledge with Qdrant.")
+
+    parser = argparse.ArgumentParser(description="Index, search, or assemble curated knowledge.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("index", parents=[common])
-    search = commands.add_parser("search", parents=[common])
-    search.add_argument("--query", required=True)
-    search.add_argument("--service", required=True)
-    search.add_argument("--environment", required=True)
-    search.add_argument("--limit", type=int, default=5)
+
+    for name in ("search", "context"):
+        command = commands.add_parser(name, parents=[common])
+        command.add_argument("--query", required=True)
+        command.add_argument("--service", required=True)
+        command.add_argument("--environment", required=True)
+        command.add_argument("--limit", type=int, default=5)
+        if name == "context":
+            command.add_argument(
+                "--context-max-bytes", type=int, default=DEFAULT_CONTEXT_POLICY.max_bytes
+            )
+            command.add_argument(
+                "--context-max-chunks", type=int, default=DEFAULT_CONTEXT_POLICY.max_chunks
+            )
+
     args = parser.parse_args()
     try:
         policy = ChunkingPolicy(max_characters=args.max_characters)
@@ -52,11 +70,16 @@ def main() -> None:
                 environment=args.environment,
                 limit=args.limit,
             )
-            if args.command == "search"
+            if args.command != "index"
+            else None
+        )
+        context_policy = (
+            ContextPolicy(max_bytes=args.context_max_bytes, max_chunks=args.context_max_chunks)
+            if args.command == "context"
             else None
         )
     except ValidationError:
-        parser.error("Invalid character budget, query, scope, or result limit")
+        parser.error("Invalid chunk/context budget, query, scope, or result limit")
 
     try:
         documents = load_knowledge_corpus(args.root, include_drafts=args.include_drafts)
@@ -69,8 +92,11 @@ def main() -> None:
             "collection": None,
             "embedding_total_tokens": 0,
         }
-        if request is not None:
+
+        hits: tuple[SearchHit, ...] = ()
+        if args.command == "search":
             output["hits"] = []
+
         scoped = request is None or any(
             chunk.document.service == request.service
             and chunk.document.environment == request.environment
@@ -80,6 +106,7 @@ def main() -> None:
             api_key = os.getenv("OPENAI_API_KEY", "").strip()
             if not api_key:
                 parser.error("OPENAI_API_KEY is required for embedding operations")
+
             connection = QdrantClient(
                 url=args.qdrant_url, api_key=os.getenv("QDRANT_API_KEY") or None, timeout=10
             )
@@ -93,17 +120,25 @@ def main() -> None:
                         )
                     else:
                         hits = index.search(chunks, request, include_drafts=args.include_drafts)
-                        output["hits"] = [hit.model_dump(mode="json") for hit in hits]
+                        if args.command == "search":
+                            output["hits"] = [hit.model_dump(mode="json") for hit in hits]
                         output["collection"] = index.collection_name(
                             chunks, include_drafts=args.include_drafts
                         )
                     output["embedding_total_tokens"] = embedder.total_tokens
             finally:
                 connection.close()
-    except (CorpusError, ChunkingError, EmbeddingError, KnowledgeIndexError) as exc:
+
+        if context_policy is not None:
+            assert request is not None
+            output["assembly"] = assemble_context(
+                request, hits, policy=context_policy, include_drafts=args.include_drafts
+            ).model_dump(mode="json")
+    except (CorpusError, ChunkingError, EmbeddingError, KnowledgeIndexError, ContextError) as exc:
         parser.exit(status=1, message=f"Knowledge operation failed: {exc}\n")
     except (ResponseHandlingException, UnexpectedResponse):
         parser.exit(status=1, message="Qdrant request failed; check the service and credentials\n")
+
     print(json.dumps(output, ensure_ascii=False, indent=2))
 
 
