@@ -1,10 +1,10 @@
 # Local knowledge corpus
 
 The local corpus contains Markdown runbooks, an HTML service overview, and a
-text-native PDF configuration reference. It prepares future retrieval-augmented
-investigation; the investigation pipeline does not consume these documents yet.
-Dense retrieval is available through a separate CLI. Reranking and integration
-with incident generation are not implemented.
+text-native PDF configuration reference. The HTTP investigation pipeline does not
+consume these documents yet. Dense retrieval and cited RAG recommendations are
+available through separate CLIs. Reranking and integration into the HTTP investigation workflow are not
+implemented.
 
 ## Catalogs and review
 
@@ -126,8 +126,8 @@ or prove that a suggested action was executed. A past postmortem is an analogy,
 not proof that the current incident has the same cause.
 
 Ingestion does not remove prompt injection, resolve contradictory documents, or
-enforce editorial version increments. Document text remains untrusted context
-when model integration is introduced. Search-time context assembly must retain
+enforce editorial version increments. Document text remains untrusted context in
+model requests. Search-time context assembly must retain
 relevant interpretation and operational limits; section splitting alone does
 not guarantee complete context.
 
@@ -331,8 +331,9 @@ The output's `assembly.context` records scope, approved/preview mode and full so
 chunks, including scores, source hashes and extraction provenance. `payload_bytes`
 counts the UTF-8 bytes of `KnowledgeContext.to_json()`, including JSON structure
 and metadata. The indented CLI report and its diagnostics are outside that budget.
-A future generator must recheck its complete serialized input, including telemetry,
-request, context and instructions, against its own byte and token limits.
+The recommendation CLI below separately caps its complete serialized input,
+including telemetry, request, context and instructions. A byte budget is distinct
+from a model token limit.
 
 All candidates are checked before selection. Wrong scopes, unapproved documents
 outside preview and conflicting content for one chunk ID fail the operation, even
@@ -349,7 +350,74 @@ retrieval evaluator scores raw search candidates; it does not score the smaller
 context after budget selection. Context-level relevance needs separate evaluation.
 
 Document text remains untrusted reference data. Context assembly does not sanitize
-prompt injection or turn a runbook into telemetry evidence. The current API and
-OpenAI analyzer do not consume this contract yet. Typed citations, generator
-instructions, full-input budgeting, persistence and UI support belong to the
-subsequent integration.
+prompt injection or turn a runbook into telemetry evidence. The standalone RAG CLI
+below consumes this contract; HTTP integration, saved-report citations and their
+UI presentation remain subsequent work.
+
+## RAG recommendations from investigation exports
+
+Use the UI's Export JSON action and save the resulting schema-version-1 file as
+`data/investigation-report.json`. The CLI accepts this exact `{schema_version,
+request, report}` envelope, derives service/environment from its request and uses
+only its original evidence and missing-data fields as observation input. Old
+generated summary, findings, hypotheses and recommendations are not prompt input.
+
+Build the matching knowledge snapshot first. The committed sample documents are
+still drafts, so a demonstration requires explicit preview:
+
+```bash
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py index --include-drafts
+
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/recommend_knowledge.py \
+  --investigation data/investigation-report.json \
+  --query "simulated payment timeout" --include-drafts
+```
+
+This is an explicit billable operation: it can send the query for embedding, then
+send original observations and selected document text for recommendation generation.
+`LLM_ENABLED` controls the existing API analysis, not this manual CLI operation.
+The existing default generation model is retained; `--model` overrides it.
+`--query` selects retrieval candidates; generation remains focused on the exported
+incident and selected documents.
+SDK retries are disabled for this command. No documents are approved automatically.
+
+The index must already exist for the current corpus and chunk policy. The CLI
+never builds an index. Approved mode is the default. No eligible documents, or no
+whole candidate fitting the context policy, gives `status=skipped` and no generation.
+The latter case may still have query-embedding usage. All no-key/no-client cases
+are limited to operations that need no search.
+
+Each generated check has separate `knowledge_ids` and `evidence_ids`. At least one
+selected knowledge ID is required per check; telemetry references may be empty.
+Both namespaces are constrained in the provider schema and validated locally.
+Unknown, overlapping and duplicate references are rejected. If the selected
+documents are irrelevant, the model may return empty checks with explanatory
+limitations. Reference validity does not prove semantic support or safe advice.
+
+The telemetry analyzer and knowledge recommender perform different generation
+tasks: the former builds an incident analysis, while the latter proposes checks
+from original observations and retrieved guidance. Their prompts share common
+evidence-interpretation rules from `llm/prompts.py`; task-specific instructions
+remain separate. Using a standalone CLI is an incremental integration choice, not
+a requirement to run every RAG analysis through two model calls. The HTTP API,
+stored investigation schema and report UI retain their existing contracts.
+
+The final composed prompt is fixed and hashed. Documents, request descriptions
+and telemetry are serialized only into the user data message. The 32000-byte application limit
+covers that JSON and the static instructions; it is separate from the selected
+context budget and from the provider's model-specific token limits.
+
+The CLI prints a separate JSON artifact containing the original export, its SHA,
+query, model and prompt SHA, collection, full selected context, recommendations and
+usage. It does not rewrite the input or submit checks for execution. Runtime
+failures also print an artifact and exit 1, retaining available context and reported
+generation usage. Invalid input/configuration exits before a completed artifact.
+Skipped and completed runs exit 0; completed can include an explained abstention.
+
+Embedding totals and generation `LLMUsage` remain separate. A failed embedding
+operation has unknown tokens (`null`) rather than a fabricated zero. These values
+are not a complete billing ledger and are not added to the API Usage dashboard.
+Ordinary tests use fixture vectors, Qdrant Local and mocked SDK HTTP responses;
+real semantic quality requires explicit runs and review of citation support.

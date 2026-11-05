@@ -21,7 +21,7 @@ remediation is not implemented.
 | --- | --- |
 | Backend | Python 3.12+, FastAPI, Pydantic, HTTPX, Uvicorn |
 | Persistence | PostgreSQL 17, SQLAlchemy 2, Psycopg 3, Alembic |
-| AI analysis | OpenAI Python SDK, Responses API, structured outputs, provider usage |
+| AI analysis and RAG checks | OpenAI Python SDK, Responses API, structured outputs, provider usage |
 | Knowledge ingestion | markdown-it-py, Docling for HTML/text-native PDF, semchunk |
 | Knowledge retrieval | Qdrant 1.18, OpenAI embeddings, text-embedding-3-small, tiktoken |
 | Frontend | React 19, React Router, TypeScript, Vite, Radix UI, Zod, CSS chart animations |
@@ -74,6 +74,7 @@ Only implemented technologies are listed here. Planned capabilities are describe
   approved documents by default, and an explicit draft-preview mode.
 - Opt-in retrieval evaluation using document labels, Recall@k, and MRR@k at chunk ranks.
 - Bounded knowledge-context assembly with whole chunks, source provenance, and omission diagnostics.
+- An opt-in RAG CLI that generates cited checks from investigation exports and selected documents.
 
 With analysis disabled, reports contain evidence and data gaps, with empty findings and
 hypotheses. A structurally valid model report does not prove that its explanation is
@@ -119,7 +120,7 @@ See the
 
 The v0.2 diagram covers the investigation API and its persistence workflow. The
 separate knowledge CLI flow is shown below; retrieved documents do not enter
-incident generation yet.
+the HTTP investigation reports yet.
 
 The investigator reads the shared log file, queries the Prometheus HTTP API, and
 retrieves Actuator context when an investigation is requested and those sources are
@@ -168,6 +169,9 @@ flowchart LR
     results --> metrics["Recall@k / MRR@k"]
     results --> assemble["Whole-chunk context assembly"]
     assemble --> context["Scoped JSON context / UTF-8 byte budget"]
+    context --> recommend["OpenAI RAG recommendation CLI"]
+    export["Investigation JSON export / original observations"] --> recommend
+    recommend --> artifact["Cited checks / context / usage artifact"]
     labels["Manual document labels"] --> metrics
 ```
 
@@ -186,7 +190,13 @@ for setup, commands, preview boundaries, and metric definitions.
 The `context` command in `scripts/search_knowledge.py` assembles a bounded JSON
 fragment from the current search results. It preserves whole chunks and provenance,
 checks scope and approval, and reports excluded candidates separately. This is a
-context-preparation contract; generated incident reports do not consume it yet.
+context-preparation contract. The standalone `scripts/recommend_knowledge.py` CLI
+combines it with original observations from an investigation export and generates
+checks with separate telemetry and knowledge citations. The HTTP investigation
+workflow does not call this CLI. Analysis and knowledge recommendations have
+different output contracts and share evidence-interpretation rules from
+`llm/prompts.py`. The separate CLI keeps this first integration independently
+reviewable; RAG itself does not require two generation calls.
 
 ### Source collection outcomes
 
@@ -248,8 +258,9 @@ remain unpriced. Failed or rejected answers retain any usage reported by the pro
 Older investigations have no invented usage. See the
 [live accounting validation](docs/usage-validation.md) for a real-call check.
 
-Knowledge CLI commands report successful embedding token totals separately.
-Those embedding calls are not included in the investigation Usage dashboard.
+Knowledge CLI commands report embedding token totals separately. The recommendation
+CLI also records generation usage. These CLI calls are not included in the
+investigation Usage dashboard.
 
 ## Quick start with Docker Compose
 
@@ -389,6 +400,8 @@ The running API does not need them. See [CI details](docs/development.md#checks-
 Retrieval tests use deterministic fixture vectors and do not call OpenAI. Running
 the opt-in retrieval evaluator with real embeddings is separate from CI; its
 retrieval metrics describe the small labelled dataset rather than production accuracy.
+Recommendation tests use mocked SDK responses to check citation validation, failure
+artifacts and usage capture without a model API key.
 
 ## Current limits
 
@@ -399,15 +412,16 @@ success does not establish business health.
 
 Model output still requires engineering review. Saved history and shareable report
 pages require optional PostgreSQL storage. Without it, the workspace keeps its latest
-report only in memory. Queues, traces, retrieval-augmented incident generation,
+report only in memory. Queues, traces, RAG in the investigation API,
 automated fixes, and notifications are not implemented. See
 [all collection and analysis limits](docs/limitations.md) and the
 [real-model validation record](docs/validation/2026-10-18-analysis-boundaries.md).
 A draft [knowledge corpus](docs/knowledge.md) supports local Markdown, HTML, and
 text-native PDF extraction and a separate dense-search CLI backed by Qdrant.
-Retrieval evaluation reports a baseline on manual document labels. Reranking,
-calibrated relevance thresholds, and generation from retrieved context remain
-unimplemented; the investigation pipeline does not consume retrieved documents yet.
+Retrieval evaluation reports a baseline on manual document labels. A separate RAG
+CLI generates cited recommended checks from exports. Reranking, calibrated
+relevance thresholds, and retrieval integration into the HTTP investigation
+workflow and UI remain unimplemented.
 
 ## Guides
 
@@ -435,7 +449,7 @@ to point to the matching guide.
 | [Saved investigations](docs/persistence.md) | PostgreSQL, migrations, API, metadata, and tests |
 | [Analysis boundaries](docs/analysis-boundaries.md) | Evidence IDs, temporal support, and metric interpretation |
 | [Model evaluation procedure](docs/llm-evaluation.md) | Live run artifacts, review, and release checks |
-| [Knowledge ingestion and retrieval](docs/knowledge.md) | Document review, extraction, Qdrant CLI, and retrieval evaluation |
+| [Knowledge ingestion and retrieval](docs/knowledge.md) | Document review, extraction, Qdrant retrieval, evaluation, and cited RAG checks |
 | [Demo recording](docs/demo.md) | Walkthrough and opt-in recording procedure |
 | [Release guide](docs/releasing.md) | Versioning and GitHub publication |
 
@@ -447,8 +461,9 @@ source outcomes and timing, token/cost accounting, and clearer reports. See the
 
 The v0.3 development track prepares operational knowledge for retrieval-augmented
 investigation. Document extraction, chunk preparation, Qdrant search, and an opt-in
-retrieval evaluator are available as separate CLIs. Broader relevance labels and
-retrieval tuning should guide the later integration of reviewed context into reports.
+retrieval evaluator are available as separate CLIs. A recommendation CLI combines
+retrieved context with exported incident observations. Broader relevance labels and
+citation-support evaluation should guide the later integration into API reports.
 
 Next work should broaden evaluation on unseen incidents and improve remaining metric
 interpretation errors. Recorded technical passes are not a production-accuracy claim.
