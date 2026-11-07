@@ -68,7 +68,7 @@ Only implemented technologies are listed here. Planned capabilities are describe
   PostgreSQL service and a one-shot migration service in the persistence overlay.
 - Python and frontend tests, Java API tests, and telemetry integration checks.
 - An opt-in LLM evaluation runner with repeatable scenarios, run metadata, and checkpoints.
-- Offline validation of separately recorded manual reviews of saved model outputs.
+- Offline validation of separately recorded manual reviews of saved analyses and RAG recommendations.
 - Local Markdown, HTML, and text-native PDF extraction with source provenance and retrieval chunks.
 - Separate Qdrant indexing and search CLIs with exact service/environment filters,
   approved documents by default, and an explicit draft-preview mode.
@@ -172,6 +172,7 @@ flowchart LR
     context --> recommend["OpenAI RAG recommendation CLI"]
     export["Investigation JSON export / original observations"] --> recommend
     recommend --> artifact["Cited checks / context / usage artifact"]
+    artifact --> review["Offline recorded semantic review"]
     labels["Manual document labels"] --> metrics
 ```
 
@@ -197,6 +198,12 @@ workflow does not call this CLI. Analysis and knowledge recommendations have
 different output contracts and share evidence-interpretation rules from
 `llm/prompts.py`. The separate CLI keeps this first integration independently
 reviewable; RAG itself does not require two generation calls.
+
+`scripts/review_knowledge.py` creates and checks a separate manual review of one
+saved recommendation artifact. It binds decisions to the exact source bytes and
+requires explicit judgments about citation support, incident relevance, time
+limits, actionability, and the response's limitations. Reviewing a saved artifact
+does not call OpenAI or Qdrant.
 
 ### Source collection outcomes
 
@@ -401,7 +408,8 @@ Retrieval tests use deterministic fixture vectors and do not call OpenAI. Runnin
 the opt-in retrieval evaluator with real embeddings is separate from CI; its
 retrieval metrics describe the small labelled dataset rather than production accuracy.
 Recommendation tests use mocked SDK responses to check citation validation, failure
-artifacts and usage capture without a model API key.
+artifacts and usage capture without a model API key. Offline review tests cover
+source binding, review completeness, and decisions for explained abstention.
 
 ## Current limits
 
@@ -462,8 +470,9 @@ source outcomes and timing, token/cost accounting, and clearer reports. See the
 The v0.3 development track prepares operational knowledge for retrieval-augmented
 investigation. Document extraction, chunk preparation, Qdrant search, and an opt-in
 retrieval evaluator are available as separate CLIs. A recommendation CLI combines
-retrieved context with exported incident observations. Broader relevance labels and
-citation-support evaluation should guide the later integration into API reports.
+retrieved context with exported incident observations, and a separate offline review
+records semantic assessments of those saved recommendations. Broader relevance
+labels and reviewed outputs should guide the later integration into API reports.
 
 Next work should broaden evaluation on unseen incidents and improve remaining metric
 interpretation errors. Recorded technical passes are not a production-accuracy claim.
