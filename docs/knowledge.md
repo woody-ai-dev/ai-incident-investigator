@@ -372,7 +372,8 @@ uv run --env-file .env --locked --extra ingestion --extra retrieval \
 uv run --env-file .env --locked --extra ingestion --extra retrieval \
   python scripts/recommend_knowledge.py \
   --investigation data/investigation-report.json \
-  --query "simulated payment timeout" --include-drafts
+  --query "simulated payment timeout" --include-drafts \
+  > data/knowledge-recommendations.json
 ```
 
 This is an explicit billable operation: it can send the query for embedding, then
@@ -421,3 +422,68 @@ operation has unknown tokens (`null`) rather than a fabricated zero. These value
 are not a complete billing ledger and are not added to the API Usage dashboard.
 Ordinary tests use fixture vectors, Qdrant Local and mocked SDK HTTP responses;
 real semantic quality requires explicit runs and review of citation support.
+
+## Offline review of saved recommendations
+
+Review the saved artifact before integrating its advice into an investigation
+report. A known chunk ID links to a chunk in the saved artifact. The reviewer
+decides whether the cited text supports the proposed action and reason. The
+review CLI records these judgments separately from generation and retrieval metrics.
+
+First check that generation succeeded and the artifact has `status=completed`.
+The generator can write a JSON artifact even when it exits with a runtime failure.
+`skipped` and `failed` artifacts have no completed model output to review and are
+rejected by the review command.
+
+```bash
+uv run --locked python scripts/review_knowledge.py init \
+  --artifact data/knowledge-recommendations.json \
+  --output data/knowledge-review.json
+
+# Fill in the reviewer, notes, and verdicts in knowledge-review.json.
+uv run --locked python scripts/review_knowledge.py check \
+  --artifact data/knowledge-recommendations.json \
+  --review data/knowledge-review.json
+```
+
+Review needs no API key, Qdrant service, or ingestion/retrieval extras. `init`
+creates a new file and never overwrites an existing review or the source artifact.
+It initializes every verdict as `not_reviewed`; it does not infer a semantic pass.
+
+Each entry's `check_index` refers to the zero-based position in
+`recommendations.checks`. Keep exactly one entry for every generated check. Read
+its cited chunks, cited telemetry, incident request, and data gaps when recording
+the following verdicts:
+
+| Criterion | What to assess |
+| --- | --- |
+| `knowledge_support` | Cited documents support the action and its reason, without invented guidance. |
+| `evidence_relevance` | The check fits this incident; telemetry citations support its relevance and missing observations are not invented. |
+| `temporal_correctness` | Historical checks, current snapshots, metric meanings, and future instrumentation remain distinct. |
+| `actionability` | The proposed action is concrete and feasible; unobserved dependencies are conditional and execution is not claimed. |
+| `response_appropriateness` | The overall response gives warranted advice or appropriately abstains when the selected guidance is insufficient. |
+| `limitations` | Data gaps, document limits, and any unreviewed preview guidance are disclosed accurately. |
+
+The first four criteria apply to every check. The last two apply to the whole
+response. A completed result with empty checks is an explained abstention, not an
+automatic pass: its two overall verdicts still require review.
+
+Use `pass`, `fail`, or `not_reviewed`. Every assessed check needs explanatory
+`notes`; assessed overall criteria need overall `notes`. Any assessment also
+requires a nonempty `reviewer`. A `fail` verdict takes priority over remaining
+unreviewed criteria. Only explicit passes for every criterion produce
+`reviewed_pass`.
+
+`init` exits 0 when the template is created. `check` exits 0 for `reviewed_pass`,
+1 for `pending_review` or `reviewed_fail`, and 2 for invalid input, mismatched source
+bytes, or an incomplete set of check entries.
+
+The review stores SHA-256 of the exact artifact bytes. Changing its contents,
+check order, or even formatting requires a new review. This binds decisions to a
+saved version; the reviewer name is recorded metadata, not an authenticated
+signature. A reviewed pass applies only to that artifact and the recorded human
+assessments. It is not a retrieval benchmark or a production accuracy score.
+
+This step makes citation support and inappropriate advice visible before API/UI
+integration. Broader evaluation datasets and automated evaluation can then build
+on concrete reviewed examples.
