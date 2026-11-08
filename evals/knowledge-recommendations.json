@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "simulated-payment-timeout",
+      "query": "Simulated payment timeout: check the configured failure mode and matching order logs.",
+      "expected_status": "completed",
+      "expected_context": [
+        {
+          "document_id": "payment-timeout",
+          "section": "Suggested next checks"
+        }
+      ],
+      "review_questions": [
+        "Does a cited passage support checking the configured failure mode and correlating it with matching order logs?",
+        "Does the advice preserve the simulation marker and leave real gateway contact and payment outcome unconfirmed?"
+      ]
+    },
+    {
+      "id": "same-scope-tls-expiry",
+      "query": "TLS handshake failed because a client reported an expired server certificate.",
+      "expected_status": "completed",
+      "expected_context": [],
+      "review_questions": [
+        "If the selected passages provide no relevant guidance, does the response return empty checks and explain the limitation?",
+        "Does the response avoid presenting a same-scope document as support for certificate troubleshooting it does not describe?"
+      ]
+    },
+    {
+      "id": "scrape-and-late-health",
+      "query": "Payment timeout with Prometheus scrape success and a later Actuator health snapshot.",
+      "expected_status": "completed",
+      "expected_context": [
+        {
+          "document_id": "payment-timeout",
+          "section": "Evidence boundaries"
+        },
+        {
+          "document_id": "partial-collection",
+          "section": "Suggested next checks"
+        }
+      ],
+      "review_questions": [
+        "Does the advice interpret up=1 as successful scraping at observed evaluation points and leave order success and continuous availability unconfirmed?",
+        "Does it treat Actuator UP as a later observation and propose a feasible check against retained incident-era telemetry?"
+      ]
+    },
+    {
+      "id": "no-eligible-scope",
+      "query": "Inventory reservation timed out.",
+      "expected_status": "skipped",
+      "expected_issue": "No eligible knowledge documents for the requested scope.",
+      "expected_context": [],
+      "review_questions": []
+    }
+  ]
+}

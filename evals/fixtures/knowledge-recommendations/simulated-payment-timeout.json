@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "request": {
+    "service": "order-service",
+    "environment": "local",
+    "start_time": "2026-10-17T10:00:00Z",
+    "end_time": "2026-10-17T10:05:00Z"
+  },
+  "report": {
+    "summary": "An order log recorded a simulated payment timeout.",
+    "evidence": [
+      {
+        "id": "log-1",
+        "source": "log",
+        "service": "order-service",
+        "summary": "[ERROR] Payment request timed out (simulated): order=22222222-2222-4222-8222-222222222222",
+        "reference": "fixture:simulated-payment-timeout:log:1",
+        "start_time": "2026-10-17T10:02:00Z"
+      }
+    ],
+    "findings": [],
+    "hypotheses": [],
+    "recommended_checks": [],
+    "missing_data": [
+      "The configured failure mode and dependency request records were not collected."
+    ]
+  }
+}
