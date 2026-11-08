@@ -8,7 +8,8 @@
       "expected_context": [
         {
           "document_id": "payment-timeout",
-          "section": "Suggested next checks"
+          "section": "Suggested next checks",
+          "text_contains": "inspect the configured failure mode and correlate the timeout with the matching order log records"
         }
       ],
       "review_questions": [
@@ -33,11 +34,13 @@
       "expected_context": [
         {
           "document_id": "payment-timeout",
-          "section": "Evidence boundaries"
+          "section": "Evidence boundaries",
+          "text_contains": "A current Actuator health snapshot does not establish historical health."
         },
         {
           "document_id": "partial-collection",
-          "section": "Suggested next checks"
+          "section": "Suggested next checks",
+          "text_contains": "seek retained incident-era observations from an additional source"
         }
       ],
       "review_questions": [
