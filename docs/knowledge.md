@@ -487,3 +487,77 @@ assessments. It is not a retrieval benchmark or a production accuracy score.
 This step makes citation support and inappropriate advice visible before API/UI
 integration. Broader evaluation datasets and automated evaluation can then build
 on concrete reviewed examples.
+
+## Recommendation quality baseline
+
+The [baseline cases](../evals/knowledge-recommendations.json) pair fixed queries
+with synthetic UI exports in `evals/fixtures/knowledge-recommendations/`. The
+case ID is the export filename stem. Each case records the expected generation
+status, useful passages by document and section, and questions for the reviewer.
+An empty `expected_context` means no passage is labeled useful. The same-scope
+TLS case can still have selected chunks.
+
+CI validates the exports against the CLI's input contract. For a live baseline,
+use a clean checkout and the same preview index, retrieval settings, and
+generation model for all four cases. Start Qdrant as described in
+[Dense retrieval with Qdrant](#dense-retrieval-with-qdrant). Indexing, query
+embeddings, and generation can incur OpenAI usage.
+
+```bash
+mkdir -p data
+run_dir="$(mktemp -d data/knowledge-recommendation-baseline.XXXXXX)"
+git rev-parse HEAD > "$run_dir/commit.txt"
+
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/search_knowledge.py index --include-drafts --max-characters 2000 \
+  > "$run_dir/index.json"
+```
+
+Run the following block for each case, setting `case_id` to its ID. Keep each
+attempt, including a failure. Use the same values for the options shown and
+record any overrides with the run.
+
+```bash
+case_id=simulated-payment-timeout
+query="$(uv run --locked --no-sync python - "$case_id" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = Path("evals/knowledge-recommendations.json")
+cases = json.loads(manifest.read_text(encoding="utf-8"))["cases"]
+print(next(case["query"] for case in cases if case["id"] == sys.argv[1]))
+PY
+)"
+case_dir="$(mktemp -d "$run_dir/$case_id.XXXXXX")"
+exit_code=0
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/recommend_knowledge.py --include-drafts \
+  --investigation "evals/fixtures/knowledge-recommendations/$case_id.json" \
+  --query "$query" --model gpt-4.1-mini-2025-04-14 --limit 10 \
+  --max-characters 2000 --context-max-chunks 5 --context-max-bytes 12000 \
+  > "$case_dir/recommendations.json" 2> "$case_dir/stderr.txt" || exit_code=$?
+printf '%s\n' "$exit_code" > "$case_dir/exit-code.txt"
+```
+
+For each case, record the technical outcome (`status` and `issue`) and compare
+the expected passages with the selected `assembly.context.chunks`. Keep the
+original artifact for the selected text, model, prompt SHA, collection, and
+separate embedding and generation usage. If there is no artifact, use stderr
+and the exit code to record the failure.
+
+For `completed`, save a separate review using the existing rubric. Record the
+answers to the case-specific questions in the review notes. Empty `checks`
+still require an assessment of the explanation and limitations.
+
+```bash
+uv run --locked --no-sync python scripts/review_knowledge.py init \
+  --artifact "$case_dir/recommendations.json" --output "$case_dir/review.json"
+# Fill in the reviewer, notes, and verdicts before checking.
+uv run --locked --no-sync python scripts/review_knowledge.py check \
+  --artifact "$case_dir/recommendations.json" --review "$case_dir/review.json"
+```
+
+For the expected `skipped` case, compare `issue` with `expected_issue` in the
+manifest and check for empty selected context, zero embedding tokens, and null
+generation usage. Report it separately from any reviewed abstention.

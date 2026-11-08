@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "request": {
+    "service": "inventory-service",
+    "environment": "local",
+    "start_time": "2026-10-17T12:00:00Z",
+    "end_time": "2026-10-17T12:05:00Z"
+  },
+  "report": {
+    "summary": "An inventory-service log recorded a reservation timeout.",
+    "evidence": [
+      {
+        "id": "log-1",
+        "source": "log",
+        "service": "inventory-service",
+        "summary": "[ERROR] Inventory reservation timed out",
+        "reference": "fixture:no-eligible-scope:log:1",
+        "start_time": "2026-10-17T12:02:00Z"
+      }
+    ],
+    "findings": [],
+    "hypotheses": [],
+    "recommended_checks": [],
+    "missing_data": [
+      "Metrics and distributed traces are unavailable."
+    ]
+  }
+}

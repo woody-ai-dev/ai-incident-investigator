@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "request": {
+    "service": "order-service",
+    "environment": "local",
+    "start_time": "2026-10-17T11:00:00Z",
+    "end_time": "2026-10-17T11:05:00Z"
+  },
+  "report": {
+    "summary": "An order-service client log reported a certificate expiry during a TLS handshake.",
+    "evidence": [
+      {
+        "id": "log-1",
+        "source": "log",
+        "service": "order-service",
+        "summary": "[ERROR] TLS handshake failed: x509: certificate has expired",
+        "reference": "fixture:same-scope-tls-expiry:log:1",
+        "start_time": "2026-10-17T11:02:00Z"
+      }
+    ],
+    "findings": [],
+    "hypotheses": [],
+    "recommended_checks": [],
+    "missing_data": [
+      "The certificate chain and TLS endpoint details were not collected."
+    ]
+  }
+}
