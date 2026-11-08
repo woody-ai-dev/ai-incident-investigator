@@ -561,3 +561,32 @@ uv run --locked --no-sync python scripts/review_knowledge.py check \
 For the expected `skipped` case, compare `issue` with `expected_issue` in the
 manifest and check for empty selected context, zero embedding tokens, and null
 generation usage. Report it separately from any reviewed abstention.
+
+### Offline passage coverage
+
+Use the saved recommendation artifact to check which labeled passages survived
+context assembly. This command reads local files and requires no API key or
+Qdrant service.
+
+```bash
+uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
+  --case "$case_id" --artifact "$case_dir/recommendations.json" \
+  > "$case_dir/context-evaluation.json"
+```
+
+The artifact must match the case query and SHA-256 of the exact export bytes.
+A label matches when one selected chunk has the specified document ID and
+section and contains the labeled phrase. Matching is case-sensitive and
+collapses whitespace. Older labels without a phrase match by document and
+section.
+
+`passage_coverage` is the fraction of labels matched at least once. Cases with
+no labels and failures without selected chunks have null coverage. An expected
+skip can satisfy the technical expectation with null coverage. Each scored
+label lists matching selected chunk IDs. Omitted chunk IDs and reasons appear
+separately. The saved omissions lack the passage text and section needed to
+attribute a missing label to retrieval or the context budget.
+
+Exit 0 means the artifact was evaluated, including a recorded status mismatch
+or incomplete coverage. Exit 2 means the inputs are invalid or mismatched.
+Review the recommendations separately using the existing review CLI.
