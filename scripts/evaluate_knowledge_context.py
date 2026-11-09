@@ -2,50 +2,23 @@ import argparse
 import json
 from hashlib import sha256
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import ValidationError, model_validator
 
-from ai_incident_investigator.investigations.reports import ReportText
-from ai_incident_investigator.knowledge.models import Identifier, KnowledgeModel
+from ai_incident_investigator.knowledge.models import KnowledgeModel
+from ai_incident_investigator.knowledge.passage_labels import (
+    ContextCase,
+    ContextDataset,
+    case_export_path,
+    matching_chunk_ids,
+)
 from ai_incident_investigator.knowledge.recommendations import RecommendationArtifact
 from ai_incident_investigator.knowledge.retrieval_chunks import ChunkingPolicy, RetrievalChunk
 from ai_incident_investigator.knowledge.retrieval_context import NonNegativeInt, OmittedChunk
 from ai_incident_investigator.knowledge.vector_index import knowledge_collection_name
 
 DEFAULT_DATASET = Path(__file__).resolve().parents[1] / "evals/knowledge-recommendations.json"
-Section = Annotated[str, Field(min_length=1, max_length=1000)]
-
-
-class PassageLabel(KnowledgeModel):
-    document_id: Identifier
-    section: Section
-    text_contains: ReportText | None = None
-
-
-class ContextCase(KnowledgeModel):
-    id: Identifier
-    query: ReportText
-    expected_status: Literal["completed", "skipped"]
-    expected_issue: ReportText | None = None
-    expected_context: tuple[PassageLabel, ...]
-    review_questions: tuple[ReportText, ...]
-
-    @field_validator("expected_context")
-    @classmethod
-    def validate_labels(cls, labels: tuple[PassageLabel, ...]) -> tuple[PassageLabel, ...]:
-        keys = {
-            (label.document_id, label.section, " ".join((label.text_contains or "").split()))
-            for label in labels
-        }
-        if len(keys) != len(labels):
-            raise ValueError("Expected passages must be unique")
-        return labels
-
-
-class ContextDataset(KnowledgeModel):
-    schema_version: Literal[1]
-    cases: tuple[ContextCase, ...] = Field(min_length=1)
 
 
 class PreparedChunks(KnowledgeModel):
@@ -93,17 +66,6 @@ def scoped_snapshot(
     ):
         raise ValueError("Artifact chunk references do not match the scoped snapshot")
     return chunks
-
-
-def matching_chunk_ids(label: PassageLabel, chunks: tuple[RetrievalChunk, ...]) -> list[str]:
-    phrase = " ".join((label.text_contains or "").split())
-    return [
-        chunk.id
-        for chunk in chunks
-        if chunk.document.id == label.document_id
-        and chunk.section == label.section
-        and phrase in " ".join(chunk.content.split())
-    ]
 
 
 def diagnose_passage(
@@ -181,15 +143,12 @@ def main() -> None:
     try:
         dataset = ContextDataset.model_validate_json(args.dataset.read_bytes())
         cases = {case.id: case for case in dataset.cases}
-        if len(cases) != len(dataset.cases):
-            parser.exit(2, "Context evaluation failed: duplicate case IDs.\n")
 
         case = cases.get(args.case)
         if case is None:
             parser.exit(2, "Context evaluation failed: unknown case ID.\n")
 
-        export = args.dataset.parent / "fixtures" / "knowledge-recommendations" / f"{case.id}.json"
-        export_sha = sha256(export.read_bytes()).hexdigest()
+        export_sha = sha256(case_export_path(args.dataset, case).read_bytes()).hexdigest()
         artifact_bytes = args.artifact.read_bytes()
         artifact = RecommendationArtifact.model_validate_json(artifact_bytes)
         snapshot_bytes = args.prepared_chunks.read_bytes() if args.prepared_chunks else None

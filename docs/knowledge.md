@@ -622,3 +622,30 @@ these statuses:
 A run without a recorded collection or with a failure before any candidate
 was observed has null diagnosis. A duplicate entry alone does not count as a
 budget omission. The report records the SHA-256 of the supplied snapshot.
+
+#### Compare chunk sizes offline
+
+Compare two character limits before building another vector index. The command
+loads the selected corpus once and applies both policies to those same documents.
+All committed documents are drafts, so this example uses explicit preview.
+
+```bash
+mkdir -p data
+uv run --locked --extra ingestion python scripts/compare_knowledge_chunking.py \
+  --include-drafts --reference-max-characters 2000 --candidate-max-characters 512 \
+  > data/knowledge-chunking-2000-vs-512.json
+```
+
+The report records the source corpus and label dataset fingerprints, chunk counts,
+and the IDs of documents whose ordered sections, source ranges, or chunk text
+changed. A policy change can change chunk IDs even when all layouts match.
+
+For each baseline case, the report lists which chunks in its service and
+environment contain each labeled passage. Coverage is the fraction of labels
+with at least one match in the prepared corpus for that policy. Cases without
+labels have null coverage. An anchor lost at this stage cannot be retrieved as
+a complete phrase from any single chunk.
+
+The comparison performs no embedding, search, or generation. Evaluate ranking
+and selected context separately for candidates that change the layout. If a
+policy cannot fit a protected block, the command exits 2 without a JSON report.
