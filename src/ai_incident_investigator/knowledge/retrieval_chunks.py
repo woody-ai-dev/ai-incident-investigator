@@ -32,6 +32,13 @@ class ChunkingPolicy(KnowledgeModel):
 DEFAULT_POLICY = ChunkingPolicy()
 
 
+def _chunk_id(payload: dict[str, object]) -> str:
+    identity = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    return f"chunk-{sha256(identity).hexdigest()}"
+
+
 class ChunkSource(KnowledgeModel):
     block_ordinal: NonNegativeInt
     start_char: NonNegativeInt
@@ -60,6 +67,9 @@ class RetrievalChunk(KnowledgeModel):
     content: str = Field(min_length=1, max_length=6000)
     source: ChunkSource
     notes: tuple[str, ...] = ()
+
+    def has_matching_id(self) -> bool:
+        return self.id == _chunk_id(self.model_dump(mode="json", exclude={"id"}))
 
     @model_validator(mode="after")
     def validate_content(self) -> Self:
@@ -168,7 +178,7 @@ def prepare_document_chunks(
                 location=block.location,
             )
 
-            payload = {
+            payload: dict[str, object] = {
                 "document": document.metadata.model_dump(mode="json"),
                 "source_sha256": document.source_sha256,
                 "extractor": document.extractor,
@@ -182,15 +192,7 @@ def prepare_document_chunks(
                 "notes": document.notes,
             }
 
-            identity = json.dumps(
-                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-            ).encode("utf-8")
-
-            chunks.append(
-                RetrievalChunk.model_validate(
-                    {"id": f"chunk-{sha256(identity).hexdigest()}", **payload}
-                )
-            )
+            chunks.append(RetrievalChunk.model_validate({"id": _chunk_id(payload), **payload}))
 
     if not chunks:
         raise ChunkingError(f"Document has no usable chunks: {document.metadata.id}")

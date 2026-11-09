@@ -8,6 +8,7 @@ from pydantic import Field
 
 from ai_incident_investigator.knowledge.embeddings import (
     Embedder,
+    EmbeddingSpec,
     embedding_text,
     validate_vectors,
 )
@@ -38,6 +39,27 @@ def _point_id(chunk_id: str) -> str:
     return str(uuid5(NAMESPACE_URL, f"ai-incident-investigator:{chunk_id}"))
 
 
+def knowledge_collection_name(
+    chunks: tuple[RetrievalChunk, ...], spec: EmbeddingSpec, *, include_drafts: bool = False
+) -> str:
+    ids = [chunk.id for chunk in chunks]
+    if len(ids) != len(set(ids)):
+        raise KnowledgeIndexError("Chunk IDs must be unique")
+    if not include_drafts and any(chunk.document.status != "approved" for chunk in chunks):
+        raise KnowledgeIndexError("Approved index cannot contain draft documents")
+    identity = json.dumps(
+        {
+            "version": "qdrant-snapshot-v1",
+            "embedding": spec.fingerprint,
+            "chunks": sorted(ids),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    mode = "preview" if include_drafts else "approved"
+    return f"knowledge_{mode}_{sha256(identity).hexdigest()[:32]}"
+
+
 class QdrantKnowledgeIndex:
     def __init__(self, client: "QdrantClient", embedder: Embedder) -> None:
         self._client = client
@@ -46,22 +68,7 @@ class QdrantKnowledgeIndex:
     def collection_name(
         self, chunks: tuple[RetrievalChunk, ...], *, include_drafts: bool = False
     ) -> str:
-        ids = [chunk.id for chunk in chunks]
-        if len(ids) != len(set(ids)):
-            raise KnowledgeIndexError("Chunk IDs must be unique")
-        if not include_drafts and any(chunk.document.status != "approved" for chunk in chunks):
-            raise KnowledgeIndexError("Approved index cannot contain draft documents")
-        identity = json.dumps(
-            {
-                "version": "qdrant-snapshot-v1",
-                "embedding": self._embedder.spec.fingerprint,
-                "chunks": sorted(ids),
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        mode = "preview" if include_drafts else "approved"
-        return f"knowledge_{mode}_{sha256(identity).hexdigest()[:32]}"
+        return knowledge_collection_name(chunks, self._embedder.spec, include_drafts=include_drafts)
 
     def _check_config(self, collection: str) -> None:
         from qdrant_client import models
