@@ -581,12 +581,44 @@ collapses whitespace. Older labels without a phrase match by document and
 section.
 
 `passage_coverage` is the fraction of labels matched at least once. Cases with
-no labels and failures without selected chunks have null coverage. An expected
-skip can satisfy the technical expectation with null coverage. Each scored
-label lists matching selected chunk IDs. Omitted chunk IDs and reasons appear
-separately. The saved omissions lack the passage text and section needed to
-attribute a missing label to retrieval or the context budget.
+no labels and failures without any selected or omitted chunks have null coverage.
+An expected skip can satisfy the technical expectation with null coverage.
+Each scored label lists matching selected chunk IDs. Omitted chunk IDs and reasons
+appear separately.
 
 Exit 0 means the artifact was evaluated, including a recorded status mismatch
 or incomplete coverage. Exit 2 means the inputs are invalid or mismatched.
 Review the recommendations separately using the existing review CLI.
+
+#### Diagnose a missing passage
+
+Save a prepared snapshot alongside the run, using the same corpus checkout,
+draft mode, and character policy as the index. For the preview run above:
+
+```bash
+uv run --locked --extra ingestion --extra retrieval \
+  python scripts/prepare_knowledge.py --include-drafts --max-characters 2000 \
+  > "$run_dir/prepared-chunks.json"
+
+uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
+  --case "$case_id" --artifact "$case_dir/recommendations.json" \
+  --prepared-chunks "$run_dir/prepared-chunks.json" \
+  > "$case_dir/context-evaluation.json"
+```
+
+The evaluator checks chunk identities against their content and provenance,
+reproduces the artifact's collection name, and resolves all selected and
+omitted references within the scope. This works for existing artifacts if the
+matching snapshot is available. Each label's `retrieval_diagnosis` has one of
+these statuses:
+
+| Status | Meaning |
+| --- | --- |
+| `selected` | At least one matching chunk entered the model context. |
+| `omitted_by_budget` | A matching chunk was returned but omitted for `chunk_limit` or `byte_budget`. |
+| `not_retrieved` | The matching chunk exists in scope but none appeared among the returned candidates. |
+| `not_in_scoped_snapshot` | No chunk in the scope matches the label, including the required phrase. |
+
+A run without a recorded collection or with a failure before any candidate
+was observed has null diagnosis. A duplicate entry alone does not count as a
+budget omission. The report records the SHA-256 of the supplied snapshot.
