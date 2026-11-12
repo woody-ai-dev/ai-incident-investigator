@@ -17,6 +17,8 @@ from ai_incident_investigator.knowledge.embeddings import (
 )
 from ai_incident_investigator.knowledge.loader import CorpusError
 from ai_incident_investigator.knowledge.recommendations import (
+    MAX_EXPORT_BYTES,
+    NO_ELIGIBLE_KNOWLEDGE_ISSUE,
     InvestigationExport,
     KnowledgeRecommendations,
     RecommendationArtifact,
@@ -47,7 +49,6 @@ from ai_incident_investigator.llm.knowledge_recommender import (
 from ai_incident_investigator.usage.models import LLMUsage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MAX_EXPORT_BYTES = 1_000_000
 
 
 def main() -> None:
@@ -93,7 +94,7 @@ def main() -> None:
 
     mode: Literal["approved", "preview"] = "preview" if args.include_drafts else "approved"
     status: Literal["completed", "skipped", "failed"] = "skipped"
-    issue: str | None = "No eligible knowledge documents for the requested scope."
+    issue: str | None = NO_ELIGIBLE_KNOWLEDGE_ISSUE
     assembly = assemble_context(
         request, (), policy=context_policy, include_drafts=args.include_drafts
     )

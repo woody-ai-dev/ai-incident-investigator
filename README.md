@@ -199,6 +199,9 @@ different output contracts and share evidence-interpretation rules from
 `llm/prompts.py`. The separate CLI keeps this first integration independently
 reviewable; RAG itself does not require two generation calls.
 
+`scripts/run_knowledge_baseline.py` runs the labeled recommendation cases with
+fixed settings and saves their inputs, artifacts, and technical outcomes.
+
 `scripts/review_knowledge.py` creates and checks a separate manual review of one
 saved recommendation artifact. It binds decisions to the exact source bytes and
 requires explicit judgments about citation support, incident relevance, time

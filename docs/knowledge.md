@@ -498,69 +498,61 @@ An empty `expected_context` means no passage is labeled useful. The same-scope
 TLS case can still have selected chunks.
 
 CI validates the exports against the CLI's input contract. For a live baseline,
-use a clean checkout and the same preview index, retrieval settings, and
-generation model for all four cases. Start Qdrant as described in
-[Dense retrieval with Qdrant](#dense-retrieval-with-qdrant). Indexing, query
-embeddings, and generation can incur OpenAI usage.
+use a clean checkout and start Qdrant as described in
+[Dense retrieval with Qdrant](#dense-retrieval-with-qdrant). Build the index
+explicitly, then run all four cases into a new directory. Both commands can
+incur OpenAI usage. The runner defaults to approved documents. The committed
+sample documents are drafts, so both commands below use explicit preview.
 
 ```bash
 mkdir -p data
-run_dir="$(mktemp -d data/knowledge-recommendation-baseline.XXXXXX)"
-git rev-parse HEAD > "$run_dir/commit.txt"
+run_dir=data/knowledge-recommendation-baseline-01
 
 uv run --env-file .env --locked --extra ingestion --extra retrieval \
   python scripts/search_knowledge.py index --include-drafts --max-characters 2000 \
-  > "$run_dir/index.json"
-```
+  > "$run_dir.index.json"
 
-Run the following block for each case, setting `case_id` to its ID. Keep each
-attempt, including a failure. Use the same values for the options shown and
-record any overrides with the run.
-
-```bash
-case_id=simulated-payment-timeout
-query="$(uv run --locked --no-sync python - "$case_id" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-manifest = Path("evals/knowledge-recommendations.json")
-cases = json.loads(manifest.read_text(encoding="utf-8"))["cases"]
-print(next(case["query"] for case in cases if case["id"] == sys.argv[1]))
-PY
-)"
-case_dir="$(mktemp -d "$run_dir/$case_id.XXXXXX")"
-exit_code=0
 uv run --env-file .env --locked --extra ingestion --extra retrieval \
-  python scripts/recommend_knowledge.py --include-drafts \
-  --investigation "evals/fixtures/knowledge-recommendations/$case_id.json" \
-  --query "$query" --model gpt-4.1-mini-2025-04-14 --limit 10 \
-  --max-characters 2000 --context-max-chunks 5 --context-max-bytes 12000 \
-  > "$case_dir/recommendations.json" 2> "$case_dir/stderr.txt" || exit_code=$?
-printf '%s\n' "$exit_code" > "$case_dir/exit-code.txt"
+  python scripts/run_knowledge_baseline.py --include-drafts --output "$run_dir"
 ```
 
-For each case, record the technical outcome (`status` and `issue`) and compare
-the expected passages with the selected `assembly.context.chunks`. Keep the
-original artifact for the selected text, model, prompt SHA, collection, and
-separate embedding and generation usage. If there is no artifact, use stderr
-and the exit code to record the failure.
+The runner validates the dataset and every export before starting generation.
+It uses `gpt-4.1-mini-2025-04-14`, a 2,000-character chunk limit, a search
+limit of 10, and a context budget of five chunks and 12,000 bytes. An optional
+`--dataset` takes a manifest with exports in its sibling
+`fixtures/knowledge-recommendations/` directory.
+
+The run directory contains the exact original `dataset.json` and exports under
+`fixtures/knowledge-recommendations/`, along with the settings in `run.json`.
+Record the checkout's `git rev-parse HEAD` alongside the run. Each case runs once
+and its `cases/<id>/` directory preserves `recommendations.json`, `stderr.txt`,
+and `exit-code.txt`. A case with a nonzero exit leaves its output available
+for inspection and the runner proceeds to the next case. Keep the run directory
+and use a new path for another attempt.
+
+The runner writes `summary.json` and prints the same summary to stdout. Exit 0
+means every case matched its technical expectations and the recorded collection
+and prompt fingerprints were consistent across the run. Completed cases must
+identify their collection. The expected no-scope
+case must have empty context, zero embedding tokens, and null generation usage.
+Exit 1 reports a failure or mismatch. Exit 2 indicates invalid inputs or an error
+reading files, writing files, or starting the recommendation CLI. Semantic
+assessment uses the artifacts and the existing review rubric.
 
 For `completed`, save a separate review using the existing rubric. Record the
 answers to the case-specific questions in the review notes. Empty `checks`
 still require an assessment of the explanation and limitations.
 
 ```bash
+case_id=simulated-payment-timeout
+case_dir="$run_dir/cases/$case_id"
+
 uv run --locked --no-sync python scripts/review_knowledge.py init \
   --artifact "$case_dir/recommendations.json" --output "$case_dir/review.json"
 # Fill in the reviewer, notes, and verdicts before checking.
 uv run --locked --no-sync python scripts/review_knowledge.py check \
   --artifact "$case_dir/recommendations.json" --review "$case_dir/review.json"
 ```
-
-For the expected `skipped` case, compare `issue` with `expected_issue` in the
-manifest and check for empty selected context, zero embedding tokens, and null
-generation usage. Report it separately from any reviewed abstention.
 
 ### Offline passage coverage
 
@@ -570,7 +562,8 @@ Qdrant service.
 
 ```bash
 uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
-  --case "$case_id" --artifact "$case_dir/recommendations.json" \
+  --dataset "$run_dir/dataset.json" --case "$case_id" \
+  --artifact "$case_dir/recommendations.json" \
   > "$case_dir/context-evaluation.json"
 ```
 
@@ -601,7 +594,8 @@ uv run --locked --extra ingestion --extra retrieval \
   > "$run_dir/prepared-chunks.json"
 
 uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
-  --case "$case_id" --artifact "$case_dir/recommendations.json" \
+  --dataset "$run_dir/dataset.json" --case "$case_id" \
+  --artifact "$case_dir/recommendations.json" \
   --prepared-chunks "$run_dir/prepared-chunks.json" \
   > "$case_dir/context-evaluation.json"
 ```

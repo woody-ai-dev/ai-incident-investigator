@@ -17,6 +17,8 @@ from ai_incident_investigator.knowledge.retrieval_context import (
 )
 from ai_incident_investigator.usage.models import LLMUsage
 
+MAX_EXPORT_BYTES = 1_000_000
+NO_ELIGIBLE_KNOWLEDGE_ISSUE = "No eligible knowledge documents for the requested scope."
 Sha256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
