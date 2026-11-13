@@ -74,20 +74,27 @@ def diagnose_passage(
     omitted: tuple[OmittedChunk, ...],
 ) -> dict[str, object]:
     eligible = set(eligible_ids)
-    budget_omissions = [
-        item.model_dump()
+    matching_omissions = [
+        item
         for item in omitted
-        if item.chunk_id in eligible and item.reason != "duplicate"
+        if item.chunk_id in eligible
+        and item.reason in {"byte_budget", "chunk_limit", "inapplicable"}
     ]
     if selected_ids:
         status = "selected"
-    elif budget_omissions:
+    elif any(item.reason in {"byte_budget", "chunk_limit"} for item in matching_omissions):
         status = "omitted_by_budget"
+    elif matching_omissions:
+        status = "filtered_by_applicability"
     elif eligible_ids:
         status = "not_retrieved"
     else:
         status = "not_in_scoped_snapshot"
-    return {"status": status, "eligible_chunk_ids": eligible_ids, "omitted": budget_omissions}
+    return {
+        "status": status,
+        "eligible_chunk_ids": eligible_ids,
+        "omitted": [item.model_dump() for item in matching_omissions],
+    }
 
 
 def evaluate_context(

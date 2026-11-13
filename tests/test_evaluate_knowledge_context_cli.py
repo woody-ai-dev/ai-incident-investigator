@@ -193,12 +193,21 @@ def prepared_case(case_files: tuple[Path, Path], tmp_path: Path) -> tuple[Path, 
     return dataset, artifact, prepared
 
 
+@pytest.mark.parametrize(
+    ("omission_reason", "status"),
+    [("chunk_limit", "omitted_by_budget"), ("inapplicable", "filtered_by_applicability")],
+)
 def test_prepared_chunks_identify_where_passages_were_lost(
     prepared_case: tuple[Path, Path, Path],
+    omission_reason: str,
+    status: str,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     dataset, artifact, prepared = prepared_case
+    data = json.loads(artifact.read_bytes())
+    data["assembly"]["omitted"][0]["reason"] = omission_reason
+    artifact.write_text(json.dumps(data), encoding="utf-8")
     invoke(monkeypatch, dataset, artifact, "--prepared-chunks", str(prepared))
 
     result = json.loads(capsys.readouterr().out)
@@ -207,9 +216,9 @@ def test_prepared_chunks_identify_where_passages_were_lost(
     assert result["passage_coverage"] == 0.25
     assert [passage["retrieval_diagnosis"] for passage in result["passages"]] == [
         {
-            "status": "omitted_by_budget",
+            "status": status,
             "eligible_chunk_ids": [omitted["id"]],
-            "omitted": [{"chunk_id": omitted["id"], "reason": "chunk_limit"}],
+            "omitted": [{"chunk_id": omitted["id"], "reason": omission_reason}],
         },
         {"status": "selected", "eligible_chunk_ids": [selected["id"]], "omitted": []},
         {"status": "not_retrieved", "eligible_chunk_ids": [missed["id"]], "omitted": []},

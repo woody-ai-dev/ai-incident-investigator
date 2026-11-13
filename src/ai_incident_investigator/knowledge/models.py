@@ -1,6 +1,8 @@
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from ai_incident_investigator.investigations.metric_catalog import metric_definition
 
 Identifier = Annotated[
     str,
@@ -21,6 +23,33 @@ class KnowledgeModel(BaseModel):
     )
 
 
+class LogPrefixRule(KnowledgeModel):
+    kind: Literal["log_prefix"]
+    prefix: NonEmptyText
+
+
+class MetricRule(KnowledgeModel):
+    kind: Literal["metric"]
+    evidence_id: NonEmptyText
+
+    @field_validator("evidence_id")
+    @classmethod
+    def validate_metric(cls, value: str) -> str:
+        if metric_definition(value) is None:
+            raise ValueError("Applicability must name a registered metric evidence ID")
+        return value
+
+
+class CollectionGapRule(KnowledgeModel):
+    kind: Literal["collection_gap"]
+
+
+ApplicabilityRule = Annotated[
+    LogPrefixRule | MetricRule | CollectionGapRule,
+    Field(discriminator="kind"),
+]
+
+
 class DocumentMetadata(KnowledgeModel):
     id: Identifier
     title: NonEmptyText
@@ -30,6 +59,9 @@ class DocumentMetadata(KnowledgeModel):
     version: Annotated[int, Field(strict=True, ge=1)]
     status: Literal["draft", "approved"]
     reviewed_by: NonEmptyText | None = None
+    applicability: tuple[ApplicabilityRule, ...] | None = Field(
+        default=None, max_length=10, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_review(self) -> Self:

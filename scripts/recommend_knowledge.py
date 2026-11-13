@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
+from ai_incident_investigator.knowledge.applicability import applicable_hits
 from ai_incident_investigator.knowledge.corpus import load_knowledge_corpus
 from ai_incident_investigator.knowledge.embeddings import (
     EmbeddingError,
@@ -18,6 +19,7 @@ from ai_incident_investigator.knowledge.embeddings import (
 from ai_incident_investigator.knowledge.loader import CorpusError
 from ai_incident_investigator.knowledge.recommendations import (
     MAX_EXPORT_BYTES,
+    NO_APPLICABLE_KNOWLEDGE_ISSUE,
     NO_ELIGIBLE_KNOWLEDGE_ISSUE,
     InvestigationExport,
     KnowledgeRecommendations,
@@ -31,8 +33,10 @@ from ai_incident_investigator.knowledge.retrieval_chunks import (
 )
 from ai_incident_investigator.knowledge.retrieval_context import (
     DEFAULT_CONTEXT_POLICY,
+    ContextAssembly,
     ContextError,
     ContextPolicy,
+    OmittedChunk,
     assemble_context,
 )
 from ai_incident_investigator.knowledge.vector_index import (
@@ -49,6 +53,7 @@ from ai_incident_investigator.llm.knowledge_recommender import (
 from ai_incident_investigator.usage.models import LLMUsage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PREVIEW_LIMITATION = "This is a preview that may use unreviewed guidance."
 
 
 def main() -> None:
@@ -148,15 +153,49 @@ def main() -> None:
                     finally:
                         if embedding_tokens is not None:
                             embedding_tokens = embedder.total_tokens
+                    applicable = applicable_hits(investigation, hits)
                     assembly = assemble_context(
-                        request, hits, policy=context_policy, include_drafts=args.include_drafts
+                        request,
+                        applicable,
+                        policy=context_policy,
+                        include_drafts=args.include_drafts,
                     )
-                    issue = "No whole retrieved chunk fits the selected context policy."
+                    applicable_ids = {hit.chunk.id for hit in applicable}
+                    inapplicable = tuple(
+                        OmittedChunk(chunk_id=chunk_id, reason="inapplicable")
+                        for chunk_id in dict.fromkeys(
+                            hit.chunk.id for hit in hits if hit.chunk.id not in applicable_ids
+                        )
+                    )
+                    if inapplicable:
+                        assembly = ContextAssembly(
+                            context=assembly.context,
+                            policy=assembly.policy,
+                            payload_bytes=assembly.payload_bytes,
+                            omitted=(*assembly.omitted, *inapplicable),
+                        )
+                    issue = (
+                        NO_APPLICABLE_KNOWLEDGE_ISSUE
+                        if hits and not applicable
+                        else "No whole retrieved chunk fits the selected context policy."
+                    )
                     if assembly.context.chunks:
                         result = OpenAIKnowledgeRecommender(provider, args.model).recommend(
                             investigation, assembly.context
                         )
                         recommendations = result.recommendations
+                        if args.include_drafts:
+                            limitations = (
+                                PREVIEW_LIMITATION,
+                                *(
+                                    item
+                                    for item in recommendations.limitations
+                                    if item != PREVIEW_LIMITATION
+                                ),
+                            )
+                            recommendations = KnowledgeRecommendations(
+                                checks=recommendations.checks, limitations=limitations[:5]
+                            )
                         generation_usage = result.usage
                         status = "completed"
                         issue = None

@@ -38,10 +38,6 @@ that an external provider was contacted.
 For the local demo, inspect the configured failure mode and correlate
 the timeout with the matching order log records.
 
-If investigating a real integration, obtain dependency request records,
-timeout settings, and retry behavior before recommending another payment
-attempt.
-
 ## Operational limits
 
 Do not automatically retry a payment, change a timeout, restart a service,

@@ -20,6 +20,30 @@ also declare a type: runbook, architecture, configuration, deployment, or
 postmortem. General source paths are relative to the repository root; imported
 runbook filenames remain relative to `runbooks/` in their original catalog.
 
+An optional `applicability` field lists the conditions that permit a document to
+contribute to recommendations. Review these conditions with the document.
+
+| Rule kind | Condition |
+| --- | --- |
+| `log_prefix` | A log message starts with `prefix`. The comparison is case-sensitive and skips the standard `[LEVEL] ` prefix. |
+| `metric` | A metric observation has the registered `evidence_id`. |
+| `collection_gap` | A structured source collection outcome has a status other than `collected`. |
+
+Any matching rule permits the document. Log and metric observations must fall
+within or overlap the incident window. Collection gap rules use
+`report.source_collections`. The request description, query, report summary, and
+free-text `missing_data` do not supply signals.
+
+Omitted or `null` applicability preserves the previous eligibility of legacy
+documents. An explicit empty list marks a reference-only document. It remains
+available for search and context diagnostics and is excluded from recommendation
+generation. Editing applicability changes the chunk and collection fingerprints.
+Rebuild the index with the desired corpus and mode after changing these rules.
+Keep checks with different prerequisites in separately scoped documents. The
+local payment runbook covers the simulator. For a real integration, a separate
+runbook can require an observation from that integration before providing
+guidance on dependency request records, timeout settings, or retry behavior.
+
 New documents start as `draft`. Before approval, review their content against
 implemented behavior, source semantics, and operational limits. Replace the owner
 role with an accountable maintainer, set `status` to `approved`, and record
@@ -384,26 +408,37 @@ The existing default generation model is retained; `--model` overrides it.
 incident and selected documents.
 SDK retries are disabled for this command. No documents are approved automatically.
 
-The index must already exist for the current corpus and chunk policy. The CLI
-never builds an index. Approved mode is the default. No eligible documents, or no
-whole candidate fitting the context policy, gives `status=skipped` and no generation.
-The latter case may still have query-embedding usage. All no-key/no-client cases
-are limited to operations that need no search.
+The CLI uses an existing index for the current corpus and chunk policy. Approved
+mode is the default. After search, it applies catalog applicability to the
+returned hits and then assembles the context within its budget. This lets an
+applicable candidate use a slot that an excluded candidate would have occupied.
+The filter preserves the ranking of candidates that remain.
+
+The CLI records excluded hits as `inapplicable`. It returns `status=skipped`
+when no scoped document exists, all retrieved hits are inapplicable, or no
+whole candidate fits the context budget. A skip after search can retain
+query-embedding usage and the collection fingerprint. The recommendation model
+is called only for a nonempty context.
 
 Each generated check has separate `knowledge_ids` and `evidence_ids`. At least one
-selected knowledge ID is required per check; telemetry references may be empty.
+selected knowledge ID is required per check. The cited passages must directly
+support every proposed action and apply to the observed problem. The check
+preserves any conditions stated in the source. Telemetry can explain why a
+supported check is relevant to this incident. Telemetry references may be empty.
 Both namespaces are constrained in the provider schema and validated locally.
-Unknown, overlapping and duplicate references are rejected. If the selected
-documents are irrelevant, the model may return empty checks with explanatory
-limitations. Reference validity does not prove semantic support or safe advice.
+Unknown, overlapping and duplicate references are rejected. If no applicable
+check is supported by the selected passages, the prompt asks for empty checks
+and an explanation. Reviewers assess support and relevance using the saved
+passages and observations.
+For simulated events, checks that require a real external integration require
+independent observations of that integration in the incident.
+The CLI adds the preview disclosure to completed preview responses, including
+when the list of checks is empty.
 
 The telemetry analyzer and knowledge recommender perform different generation
-tasks: the former builds an incident analysis, while the latter proposes checks
-from original observations and retrieved guidance. Their prompts share common
-evidence-interpretation rules from `llm/prompts.py`; task-specific instructions
-remain separate. Using a standalone CLI is an incremental integration choice, not
-a requirement to run every RAG analysis through two model calls. The HTTP API,
-stored investigation schema and report UI retain their existing contracts.
+tasks. The analyzer builds an incident analysis. The standalone knowledge CLI
+proposes checks from original observations and applicable retrieved guidance.
+Their prompts share common evidence-interpretation rules from `llm/prompts.py`.
 
 The final composed prompt is fixed and hashed. Documents, request descriptions
 and telemetry are serialized only into the user data message. The 32000-byte application limit
@@ -457,7 +492,7 @@ the following verdicts:
 
 | Criterion | What to assess |
 | --- | --- |
-| `knowledge_support` | Cited documents support the action and its reason, without invented guidance. |
+| `knowledge_support` | Cited passages directly support the action for the observed problem and the check preserves the source's conditions. The reason distinguishes guidance from observations. |
 | `evidence_relevance` | The check fits this incident; telemetry citations support its relevance and missing observations are not invented. |
 | `temporal_correctness` | Historical checks, current snapshots, metric meanings, and future instrumentation remain distinct. |
 | `actionability` | The proposed action is concrete and feasible; unobserved dependencies are conditional and execution is not claimed. |
@@ -495,7 +530,8 @@ with synthetic UI exports in `evals/fixtures/knowledge-recommendations/`. The
 case ID is the export filename stem. Each case records the expected generation
 status, useful passages by document and section, and questions for the reviewer.
 An empty `expected_context` means no passage is labeled useful. The same-scope
-TLS case can still have selected chunks.
+TLS case can retrieve candidates and consume query-embedding tokens. It expects
+an applicability skip with empty context and no generation usage.
 
 CI validates the exports against the CLI's input contract. For a live baseline,
 use a clean checkout and start Qdrant as described in
@@ -533,8 +569,9 @@ and use a new path for another attempt.
 The runner writes `summary.json` and prints the same summary to stdout. Exit 0
 means every case matched its technical expectations and the recorded collection
 and prompt fingerprints were consistent across the run. Completed cases must
-identify their collection. The expected no-scope
-case must have empty context, zero embedding tokens, and null generation usage.
+identify their collection. The expected no-scope case must have empty context,
+zero embedding tokens, and null generation usage. The expected applicability
+skip retains the collection, query-embedding usage, and the recorded exclusions.
 Exit 1 reports a failure or mismatch. Exit 2 indicates invalid inputs or an error
 reading files, writing files, or starting the recommendation CLI. Semantic
 assessment uses the artifacts and the existing review rubric.
@@ -553,6 +590,16 @@ uv run --locked --no-sync python scripts/review_knowledge.py init \
 uv run --locked --no-sync python scripts/review_knowledge.py check \
   --artifact "$case_dir/recommendations.json" --review "$case_dir/review.json"
 ```
+
+When comparing a change to the recommendation prompt, rerun the same cases
+with the same model and settings. Record the old and new `prompt_sha256` values.
+For each completed pair, load both artifacts and compare the JSON returned by
+`build_input(artifact.investigation, artifact.assembly.context)` from
+`llm/knowledge_recommender.py`. Matching JSON confirms that both calls had the
+same observations and selected passages in the same order. Changes to
+applicability can change the context or skip generation. Evaluate those changes
+end to end using the appropriate snapshot for each run. Use the same review
+rubric for completed outputs.
 
 ### Offline passage coverage
 
@@ -610,6 +657,7 @@ these statuses:
 | --- | --- |
 | `selected` | At least one matching chunk entered the model context. |
 | `omitted_by_budget` | A matching chunk was returned but omitted for `chunk_limit` or `byte_budget`. |
+| `filtered_by_applicability` | Matching returned chunks were excluded by catalog applicability and none were omitted for budget. |
 | `not_retrieved` | The matching chunk exists in scope but none appeared among the returned candidates. |
 | `not_in_scoped_snapshot` | No chunk in the scope matches the label, including the required phrase. |
 
