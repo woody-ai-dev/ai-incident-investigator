@@ -202,6 +202,9 @@ reviewable; RAG itself does not require two generation calls.
 `scripts/run_knowledge_baseline.py` runs the labeled recommendation cases with
 fixed settings and saves their inputs, artifacts, and technical outcomes.
 
+The recommendation CLI checks catalog applicability against incident
+observations before selecting retrieved passages for generation.
+
 `scripts/review_knowledge.py` creates and checks a separate manual review of one
 saved recommendation artifact. It binds decisions to the exact source bytes and
 requires explicit judgments about citation support, incident relevance, time

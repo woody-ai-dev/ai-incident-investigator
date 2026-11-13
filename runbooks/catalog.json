@@ -7,9 +7,13 @@
       "service": "order-service",
       "environment": "local",
       "owner": "project-maintainer",
-      "version": 1,
+      "version": 2,
       "status": "draft",
       "reviewed_by": null,
+      "applicability": [
+        {"kind": "log_prefix", "prefix": "Payment request timed out (simulated):"},
+        {"kind": "metric", "evidence_id": "metric-http-504-counter"}
+      ],
       "file": "payment-timeout.md"
     },
     {
@@ -21,6 +25,9 @@
       "version": 1,
       "status": "draft",
       "reviewed_by": null,
+      "applicability": [
+        {"kind": "metric", "evidence_id": "metric-jvm-heap"}
+      ],
       "file": "heap-investigation.md"
     },
     {
@@ -32,6 +39,9 @@
       "version": 1,
       "status": "draft",
       "reviewed_by": null,
+      "applicability": [
+        {"kind": "collection_gap"}
+      ],
       "file": "partial-collection.md"
     }
   ]

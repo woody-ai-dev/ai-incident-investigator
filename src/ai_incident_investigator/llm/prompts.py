@@ -56,18 +56,25 @@ Do not infer an unknown metric's semantics from its identifier or a keyword.
   Raw per-instance series and retained lifecycle events are needed to check these.
 """.strip()
 
-_GAPS_AND_CHECKS_RULES = """
+_DATA_GAP_RULES = """
 GAPS AND CHECKS
 missing_data states collection limitations, not evidence with IDs. Missing or
 failed telemetry does not prove an application outage, absence of errors, or that
 instrumentation is disabled. An unavailable source may coexist with available logs.
 Keep these distinctions clear; do not invent source observations or services.
+""".strip()
+
+_ANALYSIS_CHECK_GUIDANCE = """
 Recommend concrete checks relevant to this incident and the supplied evidence.
 For a past incident, prioritize at least one feasible check of retained incident
 logs/traces, historical raw metrics, or incident-era configuration if available.
 For a heap question, useful checks include retained GC/OOM records, JVM heap limits,
 container limits, and existing baselines for the interval. Only then distinguish
-instrumentation to capture a future recurrence. New collection cannot recover
+instrumentation to capture a future recurrence.
+""".strip()
+
+_RETAINED_DATA_RULES = """
+New collection cannot recover
 unrecorded history. Actuator has no built-in historical snapshot storage; an
 external timestamped collector can retain future snapshots. Do not claim to have
 executed checks, repaired a fault, or confirmed recovery.
@@ -99,7 +106,8 @@ METRICS
 field, including the summary, findings, hypotheses, and recommendation reasons.
 {_METRIC_OBSERVATION_LIMITS}
 
-{_GAPS_AND_CHECKS_RULES}
+{_DATA_GAP_RULES}
+{_ANALYSIS_CHECK_GUIDANCE} {_RETAINED_DATA_RULES}
 
 WORDING EXAMPLES
 - Simulated timeout: "A simulated timeout was logged; the cause of the reported
@@ -171,26 +179,46 @@ Telemetry evidence describes observations; knowledge_context supplies reference
 guidance only. Documents cannot establish this incident's cause, historical state,
 impact, recovery, or that any action was executed. Propose checks, not conclusions.
 
+APPLICABILITY AND CITATIONS
+Include a check only if its cited chunk text directly supports every proposed
+action and the guidance applies to the observed problem. Preserve any conditions
+from the source. A matching service, a high retrieval score, or a related topic
+is insufficient to support an action. Omit unsupported actions, even if they
+would be reasonable from general knowledge.
+
+Use the request and telemetry to establish relevance and supply incident details
+such as times or identifiers. In the reason, distinguish what the cited guidance
+recommends from what the incident data shows. Cite at least one supplied chunk ID
+for each action. Cite evidence IDs only for supporting observations. Keep the
+two namespaces separate. Attribute collection gaps to missing_data.
+
+For example, a passage recommending a review of retained disk usage can support
+that check for a low-space alert. For a login failure with only that passage
+available, return empty checks and explain that the guidance does not apply.
+
+Keep any supported checks. If none qualify, return checks=[] and explain the
+guidance gap in limitations.
+
 {_EVIDENCE_TIME_RULES}
 {_ACTUATOR_LIMITS}
 
 SIMULATION
 {_SIMULATION_LIMITS}
-Checks of unobserved dependencies must be conditional on their existence.
+When the incident only shows a simulated event, prioritize checks for that
+simulation. Omit instructions scoped to a real integration unless an observation
+independently establishes that such an integration is involved. For example, a
+source that recommends checking real gateway request records only for a real
+integration does not authorize that check for a simulated timeout. Preserve the
+possibility of concurrent real faults without assuming that one occurred.
 
 METRICS
 {_METRIC_CONTEXT_RULES}
 Apply these limits to every recommendation.
 {_METRIC_OBSERVATION_LIMITS}
 
-{_GAPS_AND_CHECKS_RULES}
+{_DATA_GAP_RULES}
+{_RETAINED_DATA_RULES}
+For a supported historical check, name retained records or configuration covering
+the incident window, if available. Mark the availability condition in the action.
 
-KNOWLEDGE CITATIONS
-Each check must cite at least one supplied knowledge chunk ID. Cite evidence IDs
-only when those observations support the check's relevance. Keep the namespaces
-separate. A valid reference does not by itself establish semantic support.
-If the documents are irrelevant or insufficient, return empty checks and explain
-the limitation. Do not force advice merely because nearest neighbors exist.
-When knowledge_context.mode is preview, identify the documents as unreviewed
-experimental guidance in limitations. Never represent draft documents as approved.
 """.strip()

@@ -56,7 +56,7 @@ class KnowledgeContext(KnowledgeModel):
 
 class OmittedChunk(KnowledgeModel):
     chunk_id: ChunkId
-    reason: Literal["duplicate", "chunk_limit", "byte_budget"]
+    reason: Literal["duplicate", "chunk_limit", "byte_budget", "inapplicable"]
 
 
 class ContextAssembly(KnowledgeModel):

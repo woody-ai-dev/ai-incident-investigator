@@ -152,6 +152,7 @@ def test_namespace_collision_is_rejected_before_clients(
         "missing-index",
         "embedding-error",
         "no-context",
+        "inapplicable",
         "qdrant-error",
     ],
 )
@@ -180,6 +181,14 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
                 raise EmbeddingError("Fixture embedding failure")
             self.total_tokens += len(texts) * 3
             return [[1.0, 0.0, 1.0] for _ in texts]
+
+    if mode == "inapplicable":
+        catalog_path = root / "knowledge/catalog.json"
+        catalog = json.loads(catalog_path.read_text())
+        catalog["documents"][0]["applicability"] = [
+            {"kind": "log_prefix", "prefix": "JVM garbage collection stalled:"}
+        ]
+        catalog_path.write_text(json.dumps(catalog))
 
     chunks = prepare_corpus_chunks(
         load_knowledge_corpus(root, include_drafts=True), include_drafts=True
@@ -273,7 +282,7 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
                 if mode == "no-context"
                 else ("--include-drafts",)
             )
-            if mode in {"completed", "no-context"}:
+            if mode in {"completed", "no-context", "inapplicable"}:
                 invoke(monkeypatch, root, *extra)
             else:
                 with pytest.raises(SystemExit) as error:
@@ -281,18 +290,35 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
                 assert error.value.code == 1
             output = json.loads(capsys.readouterr().out)
             assert close_calls == 1
-        expected = (
-            "completed" if mode == "completed" else "skipped" if mode == "no-context" else "failed"
-        )
+        expected = {
+            "completed": "completed",
+            "no-context": "skipped",
+            "inapplicable": "skipped",
+        }.get(mode, "failed")
         assert output["status"] == expected
         assert output["mode"] == "preview"
         assert calls == int(mode in {"completed", "incomplete", "unknown-reference"})
         if mode == "completed":
             assert output["recommendations"]["checks"][0]["knowledge_ids"] == [chunks[0].id]
+            assert output["recommendations"]["limitations"] == [
+                "This is a preview that may use unreviewed guidance."
+            ]
         elif mode != "no-context":
             assert output["recommendations"] is None
         if mode in {"completed", "incomplete", "unknown-reference"}:
             assert output["generation_usage"]["tokens"]["total_tokens"] == 15
+        if mode == "inapplicable":
+            assert output["issue"] == (
+                "No retrieved knowledge documents match the recorded observations."
+            )
+            assert output["collection"] == QdrantKnowledgeIndex(
+                connection, FixtureEmbedder()
+            ).collection_name(chunks, include_drafts=True)
+            assert output["generation_usage"] is None
+            assert output["assembly"]["context"]["chunks"] == []
+            assert output["assembly"]["omitted"] == [
+                {"chunk_id": chunks[0].id, "reason": "inapplicable"}
+            ]
         if mode == "qdrant-error":
             assert output["generation_usage"] is None
             assert output["issue"] == "Qdrant request failed; check the service and credentials"

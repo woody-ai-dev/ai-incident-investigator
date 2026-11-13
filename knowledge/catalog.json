@@ -12,6 +12,7 @@
       "version": 1,
       "status": "draft",
       "reviewed_by": null,
+      "applicability": [],
       "file": "knowledge/service-overview.html"
     },
     {
@@ -24,6 +25,7 @@
       "version": 1,
       "status": "draft",
       "reviewed_by": null,
+      "applicability": [],
       "file": "knowledge/configuration-reference.pdf"
     }
   ]

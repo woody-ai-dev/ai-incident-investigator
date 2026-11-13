@@ -20,12 +20,10 @@
     {
       "id": "same-scope-tls-expiry",
       "query": "TLS handshake failed because a client reported an expired server certificate.",
-      "expected_status": "completed",
+      "expected_status": "skipped",
+      "expected_issue": "No retrieved knowledge documents match the recorded observations.",
       "expected_context": [],
-      "review_questions": [
-        "If the selected passages provide no relevant guidance, does the response return empty checks and explain the limitation?",
-        "Does the response avoid presenting a same-scope document as support for certificate troubleshooting it does not describe?"
-      ]
+      "review_questions": []
     },
     {
       "id": "scrape-and-late-health",
