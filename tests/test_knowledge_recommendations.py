@@ -316,7 +316,18 @@ def test_preflight_rejects_before_generation(
     assert error.value.usage is None
 
 
-@pytest.mark.parametrize("problem", [None, "unknown-reference", "wrong-mode", "missing-usage"])
+@pytest.mark.parametrize(
+    "problem",
+    [
+        None,
+        "unknown-reference",
+        "wrong-mode",
+        "missing-usage",
+        "context-only-with-output",
+        "context-ready-without-flag",
+        "context-ready-without-assembly",
+    ],
+)
 def test_artifact_round_trip_and_reference_validation(
     problem: str | None, investigation: InvestigationExport, assembly: ContextAssembly
 ) -> None:
@@ -348,6 +359,18 @@ def test_artifact_round_trip_and_reference_validation(
         data["mode"] = "preview"
     elif problem == "missing-usage":
         data["generation_usage"] = None
+    elif problem == "context-only-with-output":
+        data.update(status="context_ready", context_only=True)
+    elif problem == "context-ready-without-flag":
+        data.update(status="context_ready", recommendations=None, generation_usage=None)
+    elif problem == "context-ready-without-assembly":
+        data.update(
+            status="context_ready",
+            context_only=True,
+            recommendations=None,
+            generation_usage=None,
+            assembly=None,
+        )
     if problem is not None:
         with pytest.raises(ValidationError):
             RecommendationArtifact.model_validate(data)

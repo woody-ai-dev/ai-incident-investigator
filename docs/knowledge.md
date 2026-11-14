@@ -637,6 +637,43 @@ Exit 0 means the artifact was evaluated, including a recorded status mismatch
 or incomplete coverage. Exit 2 means the inputs are invalid or mismatched.
 Review the recommendations separately using the existing review CLI.
 
+#### Capture context before a model run
+
+Use `--context-only` with the same export, query, and budgets as the baseline.
+It uses the existing index, query embedding, incident applicability rules, and
+context assembly. If eligible documents exist, this requires Qdrant and an OpenAI
+API key for the query embedding. The assembled input is validated locally and
+no recommendation request is sent.
+
+```bash
+case_id=scrape-and-late-health
+context_dir=data/knowledge-context-01
+mkdir -p "$context_dir"
+
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/recommend_knowledge.py --context-only --include-drafts \
+  --investigation "evals/fixtures/knowledge-recommendations/$case_id.json" \
+  --query "Payment timeout with Prometheus scrape success and a later Actuator health snapshot." \
+  --limit 10 --max-characters 2000 --context-max-chunks 5 --context-max-bytes 12000 \
+  > "$context_dir/context-only.json"
+
+uv run --locked --extra ingestion --extra retrieval \
+  python scripts/prepare_knowledge.py --include-drafts --max-characters 2000 \
+  > "$context_dir/prepared-chunks.json"
+
+uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
+  --case "$case_id" --artifact "$context_dir/context-only.json" \
+  --prepared-chunks "$context_dir/prepared-chunks.json" \
+  > "$context_dir/context-evaluation.json"
+```
+
+Context-only artifacts record `context_only: true`. The status is
+`context_ready` when the context has selected chunks and passes input
+validation, `skipped` when the context is empty, or `failed` on a pipeline
+error. Recommendations and generation usage are null. The evaluator still
+scores labeled passages, with `technical_expectation_met` set to null because
+the case's expected generation result was not tested.
+
 #### Diagnose a missing passage
 
 Save a prepared snapshot alongside the run, using the same corpus checkout,

@@ -24,6 +24,7 @@ from ai_incident_investigator.knowledge.recommendations import (
     InvestigationExport,
     KnowledgeRecommendations,
     RecommendationArtifact,
+    RecommendationStatus,
 )
 from ai_incident_investigator.knowledge.retrieval_chunks import (
     DEFAULT_POLICY,
@@ -64,6 +65,11 @@ def main() -> None:
     parser.add_argument("--query", required=True)
     parser.add_argument("--root", type=Path, default=PROJECT_ROOT)
     parser.add_argument("--include-drafts", action="store_true")
+    parser.add_argument(
+        "--context-only",
+        action="store_true",
+        help="Retrieve and validate recommendation context without generating checks.",
+    )
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--max-characters", type=int, default=DEFAULT_POLICY.max_characters)
     parser.add_argument("--context-max-bytes", type=int, default=DEFAULT_CONTEXT_POLICY.max_bytes)
@@ -98,7 +104,7 @@ def main() -> None:
         parser.error("Invalid knowledge scope, query, result limit, or chunk/context budget")
 
     mode: Literal["approved", "preview"] = "preview" if args.include_drafts else "approved"
-    status: Literal["completed", "skipped", "failed"] = "skipped"
+    status: RecommendationStatus = "skipped"
     issue: str | None = NO_ELIGIBLE_KNOWLEDGE_ISSUE
     assembly = assemble_context(
         request, (), policy=context_policy, include_drafts=args.include_drafts
@@ -127,7 +133,7 @@ def main() -> None:
             build_input(investigation, assembly.context)
             api_key = os.getenv("OPENAI_API_KEY", "").strip()
             if not api_key:
-                parser.error("OPENAI_API_KEY is required for embedding and generation")
+                parser.error("OPENAI_API_KEY is required for query embedding")
             try:
                 connection = QdrantClient(
                     url=args.qdrant_url, api_key=os.getenv("QDRANT_API_KEY") or None, timeout=10
@@ -179,7 +185,10 @@ def main() -> None:
                         if hits and not applicable
                         else "No whole retrieved chunk fits the selected context policy."
                     )
-                    if assembly.context.chunks:
+                    if assembly.context.chunks and args.context_only:
+                        build_input(investigation, assembly.context)
+                        status, issue = "context_ready", None
+                    elif assembly.context.chunks:
                         result = OpenAIKnowledgeRecommender(provider, args.model).recommend(
                             investigation, assembly.context
                         )
@@ -213,6 +222,7 @@ def main() -> None:
         recommendations = None
     artifact = RecommendationArtifact(
         status=status,
+        context_only=args.context_only,
         input_sha256=sha256(raw).hexdigest(),
         query=request.text,
         investigation=investigation,
