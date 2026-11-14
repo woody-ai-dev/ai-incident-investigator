@@ -144,20 +144,27 @@ def test_namespace_collision_is_rejected_before_clients(
 
 
 @pytest.mark.parametrize(
-    "mode",
+    ("mode", "context_only"),
     [
-        "completed",
-        "incomplete",
-        "unknown-reference",
-        "missing-index",
-        "embedding-error",
-        "no-context",
-        "inapplicable",
-        "qdrant-error",
+        ("completed", False),
+        ("completed", True),
+        ("incomplete", False),
+        ("unknown-reference", False),
+        ("missing-index", False),
+        ("embedding-error", False),
+        ("no-context", False),
+        ("inapplicable", False),
+        ("inapplicable", True),
+        ("qdrant-error", False),
+        ("qdrant-error", True),
     ],
 )
 def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
-    root: Path, mode: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    root: Path,
+    mode: str,
+    context_only: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     import openai
     import qdrant_client
@@ -282,6 +289,8 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
                 if mode == "no-context"
                 else ("--include-drafts",)
             )
+            if context_only:
+                extra = (*extra, "--context-only")
             if mode in {"completed", "no-context", "inapplicable"}:
                 invoke(monkeypatch, root, *extra)
             else:
@@ -291,22 +300,30 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
             output = json.loads(capsys.readouterr().out)
             assert close_calls == 1
         expected = {
-            "completed": "completed",
+            "completed": "context_ready" if context_only else "completed",
             "no-context": "skipped",
             "inapplicable": "skipped",
         }.get(mode, "failed")
         assert output["status"] == expected
         assert output["mode"] == "preview"
-        assert calls == int(mode in {"completed", "incomplete", "unknown-reference"})
-        if mode == "completed":
+        assert output.get("context_only", False) is context_only
+        generates = not context_only and mode in {"completed", "incomplete", "unknown-reference"}
+        assert calls == int(generates)
+        if expected == "context_ready":
+            (selected,) = output["assembly"]["context"]["chunks"]
+            assert selected["chunk"]["id"] == chunks[0].id
+            assert output["issue"] is None
+        if expected == "completed":
             assert output["recommendations"]["checks"][0]["knowledge_ids"] == [chunks[0].id]
             assert output["recommendations"]["limitations"] == [
                 "This is a preview that may use unreviewed guidance."
             ]
-        elif mode != "no-context":
+        else:
             assert output["recommendations"] is None
-        if mode in {"completed", "incomplete", "unknown-reference"}:
+        if generates:
             assert output["generation_usage"]["tokens"]["total_tokens"] == 15
+        else:
+            assert output["generation_usage"] is None
         if mode == "inapplicable":
             assert output["issue"] == (
                 "No retrieved knowledge documents match the recorded observations."

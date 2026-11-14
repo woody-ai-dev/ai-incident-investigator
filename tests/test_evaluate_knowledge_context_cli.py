@@ -63,18 +63,29 @@ def invoke(monkeypatch: pytest.MonkeyPatch, dataset: Path, artifact: Path, *extr
     cli.main()
 
 
+@pytest.mark.parametrize("context_only", [False, True])
 def test_context_coverage_uses_selected_passages(
     case_files: tuple[Path, Path],
+    context_only: bool,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     dataset, artifact = case_files
+    data = json.loads(artifact.read_bytes())
+    if context_only:
+        data.update(
+            status="context_ready",
+            context_only=True,
+            recommendations=None,
+            generation_usage=None,
+        )
+        artifact.write_text(json.dumps(data), encoding="utf-8")
     invoke(monkeypatch, dataset, artifact)
 
     result = json.loads(capsys.readouterr().out)
-    data = json.loads(artifact.read_bytes())
+    assert result["status"] == data["status"]
     assert result["passage_coverage"] == 0.5
-    assert result["technical_expectation_met"] is True
+    assert result["technical_expectation_met"] is (None if context_only else True)
     assert result["passages"][0]["selected_chunk_ids"] == []
     assert result["passages"][1]["selected_chunk_ids"] == [
         data["assembly"]["context"]["chunks"][0]["chunk"]["id"]

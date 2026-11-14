@@ -123,14 +123,19 @@ def evaluate_context(
             )
         passages.append(passage)
 
+    technical_expectation_met = None
+    if not artifact.context_only:
+        technical_expectation_met = artifact.status == case.expected_status and (
+            case.expected_issue is None or artifact.issue == case.expected_issue
+        )
+
     return {
         "case_id": case.id,
         "status": artifact.status,
         "issue": artifact.issue,
         "expected_status": case.expected_status,
         "expected_issue": case.expected_issue,
-        "technical_expectation_met": artifact.status == case.expected_status
-        and (case.expected_issue is None or artifact.issue == case.expected_issue),
+        "technical_expectation_met": technical_expectation_met,
         "passage_coverage": matched / len(passages) if context_observed and passages else None,
         "passages": passages,
         "omitted": [item.model_dump() for item in omitted],

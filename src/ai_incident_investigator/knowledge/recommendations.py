@@ -21,6 +21,7 @@ MAX_EXPORT_BYTES = 1_000_000
 NO_ELIGIBLE_KNOWLEDGE_ISSUE = "No eligible knowledge documents for the requested scope."
 NO_APPLICABLE_KNOWLEDGE_ISSUE = "No retrieved knowledge documents match the recorded observations."
 Sha256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+RecommendationStatus = Literal["completed", "context_ready", "skipped", "failed"]
 
 
 class InvestigationExport(KnowledgeModel):
@@ -63,7 +64,8 @@ class KnowledgeRecommendations(KnowledgeModel):
 
 class RecommendationArtifact(KnowledgeModel):
     schema_version: Literal[1] = 1
-    status: Literal["completed", "skipped", "failed"]
+    status: RecommendationStatus
+    context_only: bool = Field(default=False, strict=True, exclude_if=lambda value: not value)
     input_sha256: Sha256
     query: str = Field(min_length=1, max_length=4000)
     investigation: InvestigationExport
@@ -94,7 +96,15 @@ class RecommendationArtifact(KnowledgeModel):
         if evidence_ids & knowledge_ids:
             raise ValueError("Evidence and knowledge IDs must be disjoint")
 
-        if self.status == "completed":
+        if self.context_only and (
+            self.recommendations is not None or self.generation_usage is not None
+        ):
+            raise ValueError("Context-only runs cannot contain generation output or usage")
+
+        if self.status == "context_ready":
+            if not self.context_only or not knowledge_ids or self.issue is not None:
+                raise ValueError("Context ready requires a context-only run with selected chunks")
+        elif self.status == "completed":
             if not knowledge_ids or self.recommendations is None or self.generation_usage is None:
                 raise ValueError("Completed recommendations require context, output and usage")
             if self.issue is not None:
