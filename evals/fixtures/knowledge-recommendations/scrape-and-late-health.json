@@ -39,7 +39,37 @@
     "findings": [],
     "hypotheses": [],
     "recommended_checks": [],
+    "source_collections": [
+      {
+        "source": "log",
+        "status": "collected",
+        "evidence_count": 1,
+        "duration_ms": 2,
+        "issues": []
+      },
+      {
+        "source": "metric",
+        "status": "partial",
+        "evidence_count": 1,
+        "duration_ms": 48,
+        "issues": [
+          "Prometheus returned no samples for jvm-heap; absence of data does not mean zero.",
+          "Prometheus returned no samples for http-504-counter; absence of data does not mean zero."
+        ]
+      },
+      {
+        "source": "actuator",
+        "status": "collected",
+        "evidence_count": 1,
+        "duration_ms": 12,
+        "issues": [
+          "The Actuator snapshot was collected after the incident window."
+        ]
+      }
+    ],
     "missing_data": [
+      "Prometheus returned no samples for jvm-heap; absence of data does not mean zero.",
+      "Prometheus returned no samples for http-504-counter; absence of data does not mean zero.",
       "The Actuator snapshot was collected after the incident window.",
       "Historical health observations and distributed traces are unavailable."
     ]

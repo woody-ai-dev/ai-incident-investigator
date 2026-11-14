@@ -533,6 +533,13 @@ An empty `expected_context` means no passage is labeled useful. The same-scope
 TLS case can retrieve candidates and consume query-embedding tokens. It expects
 an applicability skip with empty context and no generation usage.
 
+The `scrape-and-late-health` export records a partial Prometheus collection.
+The scrape query returned samples, while JVM heap and HTTP 504 counter queries
+returned none. This structured collection outcome makes the incomplete
+telemetry runbook applicable. The later Actuator snapshot was collected
+successfully and has its own time limitation. Passage coverage measures which
+applicable guidance actually reaches the context.
+
 CI validates the exports against the CLI's input contract. For a live baseline,
 use a clean checkout and start Qdrant as described in
 [Dense retrieval with Qdrant](#dense-retrieval-with-qdrant). Build the index

@@ -43,7 +43,8 @@
       ],
       "review_questions": [
         "Does the advice interpret up=1 as successful scraping at observed evaluation points and leave order success and continuous availability unconfirmed?",
-        "Does it treat Actuator UP as a later observation and propose a feasible check against retained incident-era telemetry?"
+        "Does it treat Actuator UP as a later observation rather than evidence of incident-era health?",
+        "Does it distinguish partial metric collection from service failure and condition any additional check on retained incident-era data being available?"
       ]
     },
     {

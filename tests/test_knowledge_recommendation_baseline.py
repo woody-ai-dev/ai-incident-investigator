@@ -1,18 +1,61 @@
-import json
 from pathlib import Path
 
 import pytest
 
+from ai_incident_investigator.knowledge.applicability import applicable_hits
+from ai_incident_investigator.knowledge.documents import KnowledgeMetadata
+from ai_incident_investigator.knowledge.extraction import LocalDocumentExtractor
+from ai_incident_investigator.knowledge.loader import load_corpus
+from ai_incident_investigator.knowledge.passage_labels import (
+    ContextCase,
+    ContextDataset,
+    case_export_path,
+    matching_chunk_ids,
+)
 from ai_incident_investigator.knowledge.recommendations import InvestigationExport
+from ai_incident_investigator.knowledge.retrieval_chunks import prepare_document_chunks
+from ai_incident_investigator.knowledge.vector_index import SearchHit
 
-EVALS = Path(__file__).resolve().parents[1] / "evals"
-MANIFEST = EVALS / "knowledge-recommendations.json"
-EXPORTS = EVALS / "fixtures" / "knowledge-recommendations"
-CASE_IDS: list[str] = [
-    case["id"] for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
-]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = PROJECT_ROOT / "evals" / "knowledge-recommendations.json"
+DATASET = ContextDataset.model_validate_json(MANIFEST.read_bytes())
 
 
-@pytest.mark.parametrize("case_id", CASE_IDS)
-def test_baseline_export_matches_cli_contract(case_id: str) -> None:
-    InvestigationExport.model_validate_json((EXPORTS / f"{case_id}.json").read_bytes())
+def load_export(case: ContextCase) -> InvestigationExport:
+    return InvestigationExport.model_validate_json(case_export_path(MANIFEST, case).read_bytes())
+
+
+@pytest.mark.parametrize("case", DATASET.cases, ids=lambda case: case.id)
+def test_baseline_export_matches_cli_contract(case: ContextCase) -> None:
+    load_export(case)
+
+
+def test_scrape_case_admits_labeled_partial_collection_passage() -> None:
+    case = next(case for case in DATASET.cases if case.id == "scrape-and-late-health")
+    label = next(
+        label for label in case.expected_context if label.document_id == "partial-collection"
+    )
+    runbook = next(
+        item
+        for item in load_corpus(PROJECT_ROOT / "runbooks")
+        if item.metadata.id == label.document_id
+    )
+    metadata = KnowledgeMetadata.model_validate(
+        {
+            **runbook.metadata.model_dump(),
+            "document_type": "runbook",
+            "file": f"runbooks/{runbook.metadata.file}",
+        }
+    )
+    document = LocalDocumentExtractor().extract(metadata, runbook.content.encode("utf-8"))
+    chunks = prepare_document_chunks(document)
+    labeled_ids = set(matching_chunk_ids(label, chunks))
+    hits = tuple(SearchHit(chunk=chunk, score=1.0) for chunk in chunks if chunk.id in labeled_ids)
+
+    assert hits, "The labeled partial-collection passage must exist in the prepared runbook"
+    investigation = load_export(case)
+    assert applicable_hits(investigation, hits) == hits
+
+    report_without_outcomes = investigation.report.model_copy(update={"source_collections": None})
+    export_without_outcomes = investigation.model_copy(update={"report": report_without_outcomes})
+    assert applicable_hits(export_without_outcomes, hits) == ()
