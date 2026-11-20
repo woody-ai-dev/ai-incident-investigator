@@ -18,13 +18,14 @@ from ai_incident_investigator.knowledge.recommendations import (
     InvestigationExport,
     RecommendationArtifact,
 )
+from ai_incident_investigator.knowledge.retrieval_context import ContextPolicy
 from ai_incident_investigator.knowledge.vector_index import SearchRequest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET = PROJECT_ROOT / "evals/knowledge-recommendations.json"
 MODEL = "gpt-4.1-mini-2025-04-14"
 SEARCH_LIMIT = 10
-SETTINGS = {
+SETTINGS: dict[str, str | int] = {
     "model": MODEL,
     "limit": SEARCH_LIMIT,
     "max_characters": 2000,
@@ -33,7 +34,9 @@ SETTINGS = {
 }
 
 
-def read_inputs(dataset_path: Path) -> tuple[bytes, list[tuple[ContextCase, bytes]]]:
+def read_inputs(
+    dataset_path: Path, *, limit: int = SEARCH_LIMIT
+) -> tuple[bytes, list[tuple[ContextCase, bytes]]]:
     dataset_bytes = dataset_path.read_bytes()
     dataset = ContextDataset.model_validate_json(dataset_bytes)
     inputs: list[tuple[ContextCase, bytes]] = []
@@ -50,7 +53,7 @@ def read_inputs(dataset_path: Path) -> tuple[bytes, list[tuple[ContextCase, byte
                 text=case.query,
                 service=export.request.service,
                 environment=export.request.environment,
-                limit=SEARCH_LIMIT,
+                limit=limit,
             )
         except ValidationError as exc:
             raise ValueError(f"Invalid investigation export or search scope for {case.id}") from exc
@@ -69,6 +72,7 @@ def summarize_case(
     *,
     mode: str,
     exit_code: int,
+    settings: dict[str, str | int],
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "case_id": case.id,
@@ -90,7 +94,15 @@ def summarize_case(
         artifact.query != case.query
         or artifact.input_sha256 != sha256(export_bytes).hexdigest()
         or artifact.mode != mode
-        or artifact.model != MODEL
+        or artifact.model != settings["model"]
+        or artifact.context_only
+        or artifact.assembly is None
+        or artifact.assembly.policy.max_chunks != settings["context_max_chunks"]
+        or artifact.assembly.policy.max_bytes != settings["context_max_bytes"]
+        or any(
+            hit.chunk.policy.max_characters != settings["max_characters"]
+            for hit in artifact.assembly.context.chunks
+        )
     ):
         return {**result, "problem": "artifact_mismatch"}
 
@@ -127,6 +139,7 @@ def run_case(
     export_bytes: bytes,
     *,
     include_drafts: bool,
+    settings: dict[str, str | int],
 ) -> dict[str, object]:
     case_dir = output / "cases" / case.id
     case_dir.mkdir(parents=True)
@@ -138,7 +151,7 @@ def run_case(
         str(export_path),
         f"--query={case.query}",
     ]
-    for key, value in SETTINGS.items():
+    for key, value in settings.items():
         command.extend((f"--{key.replace('_', '-')}", str(value)))
     if include_drafts:
         command.append("--include-drafts")
@@ -155,6 +168,7 @@ def run_case(
         artifact_path.read_bytes(),
         mode="preview" if include_drafts else "approved",
         exit_code=process.returncode,
+        settings=settings,
     )
 
 
@@ -163,13 +177,29 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--output", type=Path, required=True, help="New run directory.")
     parser.add_argument("--include-drafts", action="store_true")
+    parser.add_argument("--limit", type=int, default=SEARCH_LIMIT)
+    parser.add_argument("--context-max-chunks", type=int, default=SETTINGS["context_max_chunks"])
+    parser.add_argument("--context-max-bytes", type=int, default=SETTINGS["context_max_bytes"])
     args = parser.parse_args()
+
+    try:
+        context_policy = ContextPolicy(
+            max_chunks=args.context_max_chunks, max_bytes=args.context_max_bytes
+        )
+    except ValidationError:
+        parser.error("Invalid context chunk or byte budget")
+    settings = {
+        **SETTINGS,
+        "limit": args.limit,
+        "context_max_chunks": context_policy.max_chunks,
+        "context_max_bytes": context_policy.max_bytes,
+    }
 
     output = args.output.absolute()
     mode = "preview" if args.include_drafts else "approved"
     saved_dataset = output / "dataset.json"
     try:
-        dataset_bytes, inputs = read_inputs(args.dataset)
+        dataset_bytes, inputs = read_inputs(args.dataset, limit=args.limit)
         output.mkdir(parents=True)
         saved_dataset.write_bytes(dataset_bytes)
         for case, export_bytes in inputs:
@@ -182,7 +212,7 @@ def main() -> None:
                     "schema_version": 1,
                     "dataset_sha256": sha256(dataset_bytes).hexdigest(),
                     "mode": mode,
-                    "settings": SETTINGS,
+                    "settings": settings,
                     "case_ids": [case.id for case, _ in inputs],
                 }
             ),
@@ -195,6 +225,7 @@ def main() -> None:
                 case_export_path(saved_dataset, case),
                 export_bytes,
                 include_drafts=args.include_drafts,
+                settings=settings,
             )
             for case, export_bytes in inputs
         ]

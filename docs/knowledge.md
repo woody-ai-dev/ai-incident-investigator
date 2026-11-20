@@ -44,6 +44,14 @@ local payment runbook covers the simulator. For a real integration, a separate
 runbook can require an observation from that integration before providing
 guidance on dependency request records, timeout settings, or retry behavior.
 
+An optional `instruction_conditions` list associates an authored paragraph prefix
+with allowed source collection statuses. The recommender filters instruction
+choices against the export's recorded statuses before generation. Conditions
+match the whole source outcome, and any matching condition can permit a paragraph.
+Without recorded outcomes, status-conditioned instructions are unavailable.
+Review these annotations with their source paragraphs. Metadata changes require
+a new document version and index snapshot.
+
 New documents start as `draft`. Before approval, review their content against
 implemented behavior, source semantics, and operational limits. Replace the owner
 role with an accountable maintainer, set `status` to `approved`, and record
@@ -383,8 +391,12 @@ UI presentation remain subsequent work.
 Use the UI's Export JSON action and save the resulting schema-version-1 file as
 `data/investigation-report.json`. The CLI accepts this exact `{schema_version,
 request, report}` envelope, derives service/environment from its request and uses
-only its original evidence and missing-data fields as observation input. Old
+its original evidence, source collection outcomes, and missing-data fields as input. Old
 generated summary, findings, hypotheses and recommendations are not prompt input.
+The serialized input preserves source statuses, counts, timings, and issues.
+Older exports without collection outcomes provide `source_collections: null`.
+These outcomes describe collection and have no evidence IDs. In particular,
+returned `up` samples can coexist with partial metric collection.
 
 Build the matching knowledge snapshot first. The committed sample documents are
 still drafts, so a demonstration requires explicit preview:
@@ -430,10 +442,25 @@ Unknown, overlapping and duplicate references are rejected. If no applicable
 check is supported by the selected passages, the prompt asks for empty checks
 and an explanation. Reviewers assess support and relevance using the saved
 passages and observations.
+The provider receives numbered complete paragraphs and lists grouped by source
+chunk. It selects an instruction index and provides a reason and telemetry IDs.
+The application copies the instruction and assigns its knowledge citation.
+The provider schema and local validation constrain the index and telemetry IDs.
+This preserves source conditions and negations. Relevance and explanations
+continue to use the existing review rubric.
 For simulated events, checks that require a real external integration require
 independent observations of that integration in the incident.
 The CLI adds the preview disclosure to completed preview responses, including
 when the list of checks is empty.
+The application adds a common historical-data condition to each action. Historical
+verification uses supplied incident data or retained records/configuration covering
+the incident window, if available. The condition permits reviews of supplied data
+and makes additional retained data conditional. Instruction choices reserve room
+for this text. Saved recommendations keep their action, reason, and citations.
+When the supplied guidance supports a recorded coverage gap, recommendations
+should include a conditional check for additional retained incident-era data.
+The existing review rubric assesses whether the generated actions meet these
+requirements.
 
 The telemetry analyzer and knowledge recommender perform different generation
 tasks. The analyzer builds an incident analysis. The standalone knowledge CLI
@@ -560,8 +587,12 @@ uv run --env-file .env --locked --extra ingestion --extra retrieval \
 ```
 
 The runner validates the dataset and every export before starting generation.
-It uses `gpt-4.1-mini-2025-04-14`, a 2,000-character chunk limit, a search
-limit of 10, and a context budget of five chunks and 12,000 bytes. An optional
+It uses `gpt-4.1-mini-2025-04-14` and a 2,000-character chunk limit. Search defaults
+to 10 candidates, with a context budget of five chunks and 12,000 bytes.
+`--limit`, `--context-max-chunks`, and `--context-max-bytes` configure those budgets
+within the recommendation CLI's existing bounds. The selected settings are saved
+in `run.json` and passed to every case. Each returned artifact must match the
+requested context policy and selected-chunk character policy. An optional
 `--dataset` takes a manifest with exports in its sibling
 `fixtures/knowledge-recommendations/` directory.
 
@@ -673,6 +704,67 @@ validation, `skipped` when the context is empty, or `failed` on a pipeline
 error. Recommendations and generation usage are null. The evaluator still
 scores labeled passages, with `technical_expectation_met` set to null because
 the case's expected generation result was not tested.
+
+#### Compare candidate and context budgets
+
+Use the same corpus, export, query, and index for each variant. Start Qdrant and
+build the preview index as described above. Each capture below can incur
+query-embedding usage. The evaluator reads the saved files locally.
+
+```bash
+set -euo pipefail
+mkdir -p data
+budget_dir=data/knowledge-context-budgets-01
+mkdir "$budget_dir"
+
+uv run --locked --extra ingestion --extra retrieval \
+  python scripts/prepare_knowledge.py --include-drafts --max-characters 2000 \
+  > "$budget_dir/prepared-chunks.json"
+
+capture_context() {
+  local name="$1" limit="$2" chunks="$3" bytes="$4"
+
+  uv run --env-file .env --locked --extra ingestion --extra retrieval \
+    python scripts/recommend_knowledge.py --context-only --include-drafts \
+    --investigation evals/fixtures/knowledge-recommendations/scrape-and-late-health.json \
+    --query "Payment timeout with Prometheus scrape success and a later Actuator health snapshot." \
+    --max-characters 2000 --limit "$limit" \
+    --context-max-chunks "$chunks" --context-max-bytes "$bytes" \
+    > "$budget_dir/$name.json" || return
+
+  uv run --locked --no-sync python scripts/evaluate_knowledge_context.py \
+    --case scrape-and-late-health --artifact "$budget_dir/$name.json" \
+    --prepared-chunks "$budget_dir/prepared-chunks.json" \
+    > "$budget_dir/$name-evaluation.json"
+}
+
+capture_context reference 10 5 12000 &&
+capture_context more-candidates 20 5 12000 &&
+capture_context more-chunks 20 20 12000 &&
+capture_context more-bytes 20 20 24000
+```
+
+Adjacent variants change one setting. Each capture performs a new search.
+Compare the collections, embedding configuration, and selected and omitted IDs
+before attributing a change to a budget. Increasing the candidate limit can
+expose a chunk-count limit, and increasing the chunk count can expose a byte
+limit. The complete recommendation input also has its own size limit.
+
+Check both passage labels in each evaluation, including
+`partial-collection / Suggested next checks`. After choosing settings that
+retain the useful passages, run all cases with the same settings and review
+the generated recommendations. For example, to test the largest diagnostic
+budget above:
+
+```bash
+uv run --env-file .env --locked --extra ingestion --extra retrieval \
+  python scripts/run_knowledge_baseline.py --include-drafts \
+  --limit 20 --context-max-chunks 20 --context-max-bytes 24000 \
+  --output data/knowledge-recommendation-larger-budget-01
+```
+
+The diagnostic budgets are experimental settings. Review relevance, citation
+support, input usage, and response quality before choosing release defaults.
 
 #### Diagnose a missing passage
 

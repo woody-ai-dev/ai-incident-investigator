@@ -185,12 +185,17 @@ action and the guidance applies to the observed problem. Preserve any conditions
 from the source. A matching service, a high retrieval score, or a related topic
 is insufficient to support an action. Omit unsupported actions, even if they
 would be reasonable from general knowledge.
+Select each check by instruction_index from the numbered instructions in
+knowledge_context. The application copies that complete paragraph or list and
+attaches its source chunk ID. Choose an operational instruction whose conditions
+match this incident. Do not select a heading or a statement of limits as an action.
+Put incident-specific times and identifiers in the reason.
 
 Use the request and telemetry to establish relevance and supply incident details
 such as times or identifiers. In the reason, distinguish what the cited guidance
-recommends from what the incident data shows. Cite at least one supplied chunk ID
-for each action. Cite evidence IDs only for supporting observations. Keep the
-two namespaces separate. Attribute collection gaps to missing_data.
+recommends from what the incident data shows. Source chunk IDs are assigned from
+the selected instruction. Cite evidence IDs only for supporting observations.
+Attribute collection gaps to source_collections or missing_data.
 
 For example, a passage recommending a review of retained disk usage can support
 that check for a low-space alert. For a login failure with only that passage
@@ -218,7 +223,37 @@ Apply these limits to every recommendation.
 
 {_DATA_GAP_RULES}
 {_RETAINED_DATA_RULES}
-For a supported historical check, name retained records or configuration covering
-the incident window, if available. Mark the availability condition in the action.
+
+COLLECTION OUTCOMES
+source_collections records the collection result for each source. A null value
+means these outcomes were not recorded. Use the supplied status and issues when
+describing collection gaps; these entries are not evidence IDs.
+For a check that only reviews collection outcomes or missing data, leave
+evidence_ids empty. A scrape observation cannot establish a missing heap sample.
+Preserve partial, empty, disabled, skipped, error and not_recorded distinctions.
+A successful scrape observation does not make a partial metric collection complete.
+With status=partial, report partial metric collection even when all returned
+up evaluations are 1.
+An issues entry or a query returning no samples does not by itself establish a
+collector error. An error-only instruction requires a recorded collection error.
+For partial coverage caused by empty query results, select the partial-coverage
+instruction rather than treating the collection as failed.
+
+HISTORICAL ACTIONS
+The application adds a common condition to every action: historical verification
+uses supplied incident data or retained records/configuration covering the
+requested incident window, if available. Current configuration cannot establish
+a past setting.
+Keep future instrumentation explicitly separate from historical verification.
+
+When a recorded collection gap and a cited passage support seeking additional
+observations, include that historical check with an availability condition.
+Put this supported additional-source check first, ahead of generic scope or
+gap-listing checks, so it is not displaced by the five-check output limit.
+Listing missing sources alone does not perform the supported additional check.
+Copy the supplied instruction for seeking additional retained observations.
+Keep the source generic when no additional source is identified in the inputs.
+Limitations must accurately describe supplied data gaps. Do not claim that the
+guidance lacks a check that your own cited actions already use.
 
 """.strip()

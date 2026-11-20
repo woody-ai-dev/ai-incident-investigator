@@ -14,7 +14,8 @@
       ],
       "review_questions": [
         "Does a cited passage support checking the configured failure mode and correlating it with matching order logs?",
-        "Does the advice preserve the simulation marker and leave real gateway contact and payment outcome unconfirmed?"
+        "Does the advice preserve the simulation marker and leave real gateway contact and payment outcome unconfirmed?",
+        "Does each historical records or configuration check explicitly cover the incident window and condition the action on retained data being available?"
       ]
     },
     {
@@ -44,7 +45,9 @@
       "review_questions": [
         "Does the advice interpret up=1 as successful scraping at observed evaluation points and leave order success and continuous availability unconfirmed?",
         "Does it treat Actuator UP as a later observation rather than evidence of incident-era health?",
-        "Does it distinguish partial metric collection from service failure and condition any additional check on retained incident-era data being available?"
+        "Does it preserve the partial metric collection outcome without generalizing scrape success to complete metric collection or service health?",
+        "When supported by the selected guidance, does it propose seeking additional retained incident-era observations with an explicit availability condition?",
+        "Does each historical records or configuration check explicitly cover the incident window and condition the action on retained data being available?"
       ]
     },
     {

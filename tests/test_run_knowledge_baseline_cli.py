@@ -16,6 +16,13 @@ FIXTURES = Path("fixtures/knowledge-recommendations")
 COMPLETED = "simulated-payment-timeout"
 SKIPPED = "no-eligible-scope"
 ARTIFACT = ROOT / "tests/fixtures/knowledge/recommendations.json"
+EXPECTED_SETTINGS: dict[str, str | int] = {
+    "model": "gpt-4.1-mini-2025-04-14",
+    "limit": 10,
+    "max_characters": 2000,
+    "context_max_chunks": 5,
+    "context_max_bytes": 12000,
+}
 
 
 @pytest.fixture
@@ -32,7 +39,7 @@ def dataset(tmp_path: Path) -> Path:
     return path
 
 
-def invoke(monkeypatch: pytest.MonkeyPatch, dataset: Path, output: Path) -> None:
+def invoke(monkeypatch: pytest.MonkeyPatch, dataset: Path, output: Path, *extra: str) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
@@ -43,13 +50,20 @@ def invoke(monkeypatch: pytest.MonkeyPatch, dataset: Path, output: Path) -> None
             "--output",
             str(output),
             "--include-drafts",
+            *extra,
         ],
     )
     cli.main()
 
 
-def install_child(monkeypatch: pytest.MonkeyPatch, problem: str | None = None) -> list[str]:
+def install_child(
+    monkeypatch: pytest.MonkeyPatch,
+    problem: str | None = None,
+    *,
+    settings: dict[str, str | int] | None = None,
+) -> list[str]:
     calls: list[str] = []
+    expected_settings = EXPECTED_SETTINGS if settings is None else settings
 
     def child(
         command: list[str], *, cwd: Path, stdout: BinaryIO, stderr: BinaryIO, check: bool
@@ -62,14 +76,8 @@ def install_child(monkeypatch: pytest.MonkeyPatch, problem: str | None = None) -
         def argument(flag: str) -> str:
             return command[command.index(flag) + 1]
 
-        for flag, value in {
-            "--model": "gpt-4.1-mini-2025-04-14",
-            "--max-characters": "2000",
-            "--limit": "10",
-            "--context-max-chunks": "5",
-            "--context-max-bytes": "12000",
-        }.items():
-            assert argument(flag) == value
+        for key, value in expected_settings.items():
+            assert argument(f"--{key.replace('_', '-')}") == str(value)
 
         export_path = Path(argument("--investigation"))
         output = Path(str(stdout.name)).parents[2]
@@ -99,6 +107,10 @@ def install_child(monkeypatch: pytest.MonkeyPatch, problem: str | None = None) -
         )
         context = artifact["assembly"]["context"]
         context["mode"] = "preview"
+        artifact["assembly"]["policy"].update(
+            max_chunks=int(argument("--context-max-chunks")),
+            max_bytes=int(argument("--context-max-bytes")),
+        )
         if case_id == SKIPPED:
             context.update(service=export["request"]["service"], chunks=[])
             artifact.update(
@@ -129,6 +141,17 @@ def install_child(monkeypatch: pytest.MonkeyPatch, problem: str | None = None) -
                     generation_usage=None,
                     issue="Recommendation generation failed.",
                 )
+            if problem == "policy_mismatch":
+                artifact["assembly"]["policy"]["max_chunks"] = 1
+            if problem == "chunk_policy_mismatch":
+                context["chunks"][0]["chunk"]["policy"]["max_characters"] = 6000
+            if problem == "context_only":
+                artifact.update(
+                    status="context_ready",
+                    context_only=True,
+                    recommendations=None,
+                    generation_usage=None,
+                )
         artifact["assembly"]["payload_bytes"] = KnowledgeContext.model_validate(
             context
         ).payload_bytes
@@ -139,18 +162,26 @@ def install_child(monkeypatch: pytest.MonkeyPatch, problem: str | None = None) -
     return calls
 
 
+@pytest.mark.parametrize("custom_budgets", [False, True])
 def test_saves_inputs_and_records_completed_and_skipped(
     dataset: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    custom_budgets: bool,
 ) -> None:
     output = tmp_path / "run"
-    calls = install_child(monkeypatch)
-    invoke(monkeypatch, dataset, output)
+    settings = dict(EXPECTED_SETTINGS)
+    extra: tuple[str, ...] = ()
+    if custom_budgets:
+        settings.update(limit=20, context_max_chunks=20, context_max_bytes=24000)
+        extra = ("--limit", "20", "--context-max-chunks", "20", "--context-max-bytes", "24000")
+    calls = install_child(monkeypatch, settings=settings)
+    invoke(monkeypatch, dataset, output, *extra)
 
     assert calls == [COMPLETED, SKIPPED]
     assert (output / "dataset.json").read_bytes() == dataset.read_bytes()
+    assert json.loads((output / "run.json").read_bytes())["settings"] == settings
     summary = json.loads(capsys.readouterr().out)
     assert summary == json.loads((output / "summary.json").read_bytes())
     for case, expected in zip(summary["cases"], ("completed", "skipped"), strict=True):
@@ -172,6 +203,9 @@ def test_saves_inputs_and_records_completed_and_skipped(
         ("empty_artifact", 1, None, "empty_artifact"),
         ("invalid_artifact", 0, None, "invalid_artifact"),
         ("artifact_mismatch", 0, None, "artifact_mismatch"),
+        ("policy_mismatch", 0, None, "artifact_mismatch"),
+        ("chunk_policy_mismatch", 0, None, "artifact_mismatch"),
+        ("context_only", 0, None, "artifact_mismatch"),
         ("missing_collection", 0, "completed", "unexpected_outcome"),
         ("unexpected_outcome", 1, "failed", "unexpected_outcome"),
     ],
@@ -247,3 +281,31 @@ def test_validates_before_starting_any_case(
         assert not output.exists()
     else:
         assert (output / "summary.json").read_bytes() == b"original summary\n"
+
+
+@pytest.mark.parametrize(
+    ("flag", "value"),
+    [
+        ("--limit", "0"),
+        ("--limit", "21"),
+        ("--context-max-chunks", "0"),
+        ("--context-max-chunks", "21"),
+        ("--context-max-bytes", "511"),
+        ("--context-max-bytes", "24001"),
+    ],
+)
+def test_invalid_budgets_fail_before_creating_output_or_starting_cases(
+    dataset: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    flag: str,
+    value: str,
+) -> None:
+    output = tmp_path / "run"
+    calls = install_child(monkeypatch)
+    with pytest.raises(SystemExit) as error:
+        invoke(monkeypatch, dataset, output, flag, value)
+
+    assert error.value.code == 2
+    assert calls == []
+    assert not output.exists()

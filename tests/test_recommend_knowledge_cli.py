@@ -208,14 +208,16 @@ def test_cli_runs_retrieval_assembly_and_generation_with_recorded_failures(
         assert "OLD_GENERATED_SUMMARY" not in request.content.decode()
         payload = json.loads(json.loads(request.content)["input"][0]["content"])
         assert payload["knowledge_context"]["mode"] == "preview"
-        knowledge_id = "chunk-" + "f" * 64 if mode == "unknown-reference" else chunks[0].id
+        if mode == "unknown-reference":
+            answer_index = 1000
+        else:
+            answer_index = 0
         answer = {
             "checks": [
                 {
-                    "action": "Inspect retained GC records.",
+                    "instruction_index": answer_index,
                     "reason": "Memory cause is unconfirmed.",
                     "evidence_ids": ["log-1"],
-                    "knowledge_ids": [knowledge_id],
                 }
             ],
             "limitations": [],

@@ -3,6 +3,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ai_incident_investigator.investigations.metric_catalog import metric_definition
+from ai_incident_investigator.investigations.reports import CollectionStatus
 
 Identifier = Annotated[
     str,
@@ -44,6 +45,11 @@ class CollectionGapRule(KnowledgeModel):
     kind: Literal["collection_gap"]
 
 
+class InstructionCondition(KnowledgeModel):
+    prefix: NonEmptyText
+    statuses: tuple[CollectionStatus, ...] = Field(min_length=1, max_length=7)
+
+
 ApplicabilityRule = Annotated[
     LogPrefixRule | MetricRule | CollectionGapRule,
     Field(discriminator="kind"),
@@ -60,6 +66,9 @@ class DocumentMetadata(KnowledgeModel):
     status: Literal["draft", "approved"]
     reviewed_by: NonEmptyText | None = None
     applicability: tuple[ApplicabilityRule, ...] | None = Field(
+        default=None, max_length=10, exclude_if=lambda value: value is None
+    )
+    instruction_conditions: tuple[InstructionCondition, ...] | None = Field(
         default=None, max_length=10, exclude_if=lambda value: value is None
     )
 
