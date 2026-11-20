@@ -36,11 +36,16 @@
       "service": "order-service",
       "environment": "local",
       "owner": "project-maintainer",
-      "version": 1,
+      "version": 2,
       "status": "draft",
       "reviewed_by": null,
       "applicability": [
         {"kind": "collection_gap"}
+      ],
+      "instruction_conditions": [
+        {"prefix": "For an error,", "statuses": ["error"]},
+        {"prefix": "For an empty result,", "statuses": ["empty"]},
+        {"prefix": "For partial coverage,", "statuses": ["partial"]}
       ],
       "file": "partial-collection.md"
     }

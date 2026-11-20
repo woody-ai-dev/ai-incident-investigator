@@ -1,29 +1,35 @@
 import json
+import re
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from time import perf_counter_ns
-from typing import Annotated
+from typing import Annotated, Self
 
 from openai import APIError, OpenAI
-from pydantic import AfterValidator, Field, ValidationError, create_model
+from pydantic import AfterValidator, Field, ValidationError, create_model, model_validator
 
 from ai_incident_investigator.investigations.evidence_context import build_evidence_context
-from ai_incident_investigator.investigations.reports import Identifier
+from ai_incident_investigator.investigations.reports import Identifier, ReportText, SourceCollection
+from ai_incident_investigator.knowledge.models import KnowledgeModel
 from ai_incident_investigator.knowledge.recommendations import (
     InvestigationExport,
     KnowledgeCheck,
     KnowledgeRecommendations,
 )
-from ai_incident_investigator.knowledge.retrieval_context import ChunkId, KnowledgeContext
+from ai_incident_investigator.knowledge.retrieval_context import KnowledgeContext
 from ai_incident_investigator.llm.accounting import capture_usage
 from ai_incident_investigator.llm.prompts import KNOWLEDGE_PROMPT
 from ai_incident_investigator.usage.models import LLMUsage
 
 PROMPT_SHA256 = sha256(KNOWLEDGE_PROMPT.encode("utf-8")).hexdigest()
 MAX_INPUT_BYTES = 32_000
+HISTORICAL_CHECK_CONDITION = (
+    "For historical verification, use supplied incident data or, if available, "
+    "retained records or configuration covering the requested incident window. "
+)
 
 
 class RecommendationError(RuntimeError):
@@ -40,14 +46,85 @@ class RecommendationResult:
     usage: LLMUsage
 
 
+@dataclass(frozen=True)
+class KnowledgeInstruction:
+    knowledge_id: str
+    text: str
+
+
+class RecommendationChoice(KnowledgeModel):
+    instruction_index: int = Field(strict=True, ge=0)
+    reason: ReportText
+    evidence_ids: tuple[Identifier, ...] = Field(default=(), max_length=10)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> Self:
+        if len(self.evidence_ids) != len(set(self.evidence_ids)):
+            raise ValueError("Check evidence IDs must be unique")
+        return self
+
+
+class RecommendationPlan(KnowledgeModel):
+    checks: tuple[RecommendationChoice, ...] = Field(max_length=5)
+    limitations: tuple[ReportText, ...] = Field(default=(), max_length=5)
+
+    @model_validator(mode="after")
+    def validate_abstention(self) -> Self:
+        if not self.checks and not self.limitations:
+            raise ValueError("An empty recommendation set requires an explanation")
+        return self
+
+
+def instruction_choices(
+    context: KnowledgeContext, source_collections: Sequence[SourceCollection] | None = None
+) -> tuple[KnowledgeInstruction, ...]:
+    choices = []
+    statuses = {item.status for item in source_collections or ()}
+    for hit in context.chunks:
+        normalized = hit.chunk.content.replace("\r\n", "\n").replace("\r", "\n")
+        for paragraph in re.split(r"\n\s*\n", normalized):
+            paragraph = paragraph.strip()
+            conditions = [
+                condition
+                for condition in hit.chunk.document.instruction_conditions or ()
+                if paragraph.startswith(condition.prefix)
+            ]
+            if conditions and not any(
+                statuses.intersection(condition.statuses) for condition in conditions
+            ):
+                continue
+            # Keep complete conditions and negations, reserving room for the condition.
+            if paragraph and not paragraph.startswith("#") and len(paragraph) <= 3800:
+                choices.append(KnowledgeInstruction(hit.chunk.id, paragraph))
+    return tuple(choices)
+
+
+def render_recommendations(
+    plan: RecommendationPlan, instructions: Sequence[KnowledgeInstruction]
+) -> KnowledgeRecommendations:
+    return KnowledgeRecommendations(
+        checks=tuple(
+            KnowledgeCheck(
+                action=HISTORICAL_CHECK_CONDITION + instructions[check.instruction_index].text,
+                reason=check.reason,
+                evidence_ids=check.evidence_ids,
+                knowledge_ids=(instructions[check.instruction_index].knowledge_id,),
+            )
+            for check in plan.checks
+        ),
+        limitations=plan.limitations,
+    )
+
+
 def recommendation_schema(
-    evidence_ids: Sequence[str], knowledge_ids: Sequence[str]
-) -> type[KnowledgeRecommendations]:
-    """Bind both citation namespaces in native JSON Schema and local validation."""
-    evidence, knowledge = tuple(evidence_ids), tuple(knowledge_ids)
-    known_evidence, known_knowledge = frozenset(evidence), frozenset(knowledge)
-    if not knowledge or len(known_knowledge) != len(knowledge):
-        raise ValueError("Knowledge IDs must be nonempty and unique")
+    evidence_ids: Sequence[str], instructions: Sequence[KnowledgeInstruction]
+) -> type[RecommendationPlan]:
+    """Bind instruction choices and telemetry references before requesting a plan."""
+    evidence = tuple(evidence_ids)
+    known_evidence = frozenset(evidence)
+    known_knowledge = {item.knowledge_id for item in instructions}
+    if not instructions:
+        raise ValueError("Knowledge instructions must be nonempty")
     if len(known_evidence) != len(evidence) or known_evidence & known_knowledge:
         raise ValueError("Evidence IDs must be unique and disjoint from knowledge IDs")
 
@@ -56,34 +133,24 @@ def recommendation_schema(
             raise ValueError("Reference must identify supplied telemetry evidence")
         return value
 
-    def validate_knowledge(value: str) -> str:
-        if value not in known_knowledge:
-            raise ValueError("Reference must identify a supplied knowledge chunk")
-        return value
-
     BoundEvidenceId = Annotated[
         Identifier,
         Field(json_schema_extra={"enum": list(evidence)} if evidence else {}),
         AfterValidator(validate_evidence),
     ]
-    BoundKnowledgeId = Annotated[
-        ChunkId,
-        Field(json_schema_extra={"enum": list(knowledge)}),
-        AfterValidator(validate_knowledge),
-    ]
 
-    class BoundKnowledgeCheck(KnowledgeCheck):
+    class BoundRecommendationChoice(RecommendationChoice):
+        instruction_index: int = Field(strict=True, ge=0, le=len(instructions) - 1)
         evidence_ids: tuple[BoundEvidenceId, ...] = Field(
             default=(), max_length=10 if evidence else 0
         )
-        knowledge_ids: tuple[BoundKnowledgeId, ...] = Field(min_length=1, max_length=5)
 
     return create_model(
-        "CitationBoundRecommendations",
-        __base__=KnowledgeRecommendations,
+        "InstructionBoundRecommendations",
+        __base__=RecommendationPlan,
         checks=(
-            tuple[BoundKnowledgeCheck, ...],
-            deepcopy(KnowledgeRecommendations.model_fields["checks"]),
+            tuple[BoundRecommendationChoice, ...],
+            deepcopy(RecommendationPlan.model_fields["checks"]),
         ),
     )
 
@@ -98,6 +165,10 @@ def build_input(investigation: InvestigationExport, context: KnowledgeContext) -
     if evidence_ids & {hit.chunk.id for hit in context.chunks}:
         raise RecommendationError("Telemetry and knowledge IDs must be disjoint")
 
+    instructions = instruction_choices(context, report.source_collections)
+    if context.chunks and not instructions:
+        raise RecommendationError("No complete instruction fits the action budget")
+
     payload = json.dumps(
         {
             "request": request.model_dump(mode="json"),
@@ -106,8 +177,30 @@ def build_input(investigation: InvestigationExport, context: KnowledgeContext) -
                 item.model_dump(mode="json", exclude_none=True)
                 for item in build_evidence_context(request, report.evidence)
             ],
+            "source_collections": (
+                [item.model_dump(mode="json") for item in report.source_collections]
+                if report.source_collections is not None
+                else None
+            ),
             "missing_data": report.missing_data,
-            "knowledge_context": context.model_dump(mode="json"),
+            "knowledge_context": {
+                "mode": context.mode,
+                "service": context.service,
+                "environment": context.environment,
+                "chunks": [
+                    {
+                        "knowledge_id": hit.chunk.id,
+                        "document_id": hit.chunk.document.id,
+                        "section": hit.chunk.section,
+                        "instructions": {
+                            str(index): instruction.text
+                            for index, instruction in enumerate(instructions)
+                            if instruction.knowledge_id == hit.chunk.id
+                        },
+                    }
+                    for hit in context.chunks
+                ],
+            },
         },
         ensure_ascii=False,
         separators=(",", ":"),
@@ -129,9 +222,9 @@ class OpenAIKnowledgeRecommender:
             raise RecommendationError("Recommendation generation requires knowledge context")
 
         payload = build_input(investigation, context)
+        instructions = instruction_choices(context, investigation.report.source_collections)
         schema = recommendation_schema(
-            [item.id for item in investigation.report.evidence],
-            [hit.chunk.id for hit in context.chunks],
+            [item.id for item in investigation.report.evidence], instructions
         )
         started_at = datetime.now(UTC)
         started = perf_counter_ns()
@@ -143,6 +236,7 @@ class OpenAIKnowledgeRecommender:
                 input=[{"role": "user", "content": payload}],
                 text_format=schema,
                 max_output_tokens=2000,
+                temperature=0,
                 store=False,
                 service_tier="default",
             )
@@ -176,8 +270,8 @@ class OpenAIKnowledgeRecommender:
             raise RecommendationError("Model refused the recommendations", usage=usage)
 
         return RecommendationResult(
-            recommendations=KnowledgeRecommendations.model_validate(
-                response.output_parsed.model_dump()
+            recommendations=render_recommendations(
+                RecommendationPlan.model_validate(response.output_parsed.model_dump()), instructions
             ),
             usage=usage,
         )
