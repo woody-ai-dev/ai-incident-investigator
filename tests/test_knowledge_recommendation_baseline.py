@@ -14,7 +14,14 @@ from ai_incident_investigator.knowledge.passage_labels import (
 )
 from ai_incident_investigator.knowledge.recommendations import InvestigationExport
 from ai_incident_investigator.knowledge.retrieval_chunks import prepare_document_chunks
-from ai_incident_investigator.knowledge.vector_index import SearchHit
+from ai_incident_investigator.knowledge.retrieval_context import assemble_context
+from ai_incident_investigator.knowledge.vector_index import SearchHit, SearchRequest
+from ai_incident_investigator.llm.knowledge_recommender import (
+    HISTORICAL_CHECK_CONDITION,
+    instruction_choices,
+    recommendation_schema,
+    render_recommendations,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = PROJECT_ROOT / "evals" / "knowledge-recommendations.json"
@@ -59,3 +66,37 @@ def test_scrape_case_admits_labeled_partial_collection_passage() -> None:
     report_without_outcomes = investigation.report.model_copy(update={"source_collections": None})
     export_without_outcomes = investigation.model_copy(update={"report": report_without_outcomes})
     assert applicable_hits(export_without_outcomes, hits) == ()
+
+    context = assemble_context(
+        SearchRequest(
+            text=case.query,
+            service=investigation.request.service,
+            environment=investigation.request.environment,
+        ),
+        hits,
+        include_drafts=True,
+    ).context
+    choices = instruction_choices(context, investigation.report.source_collections)
+    (partial_check,) = choices
+    assert partial_check.text.startswith("For partial coverage,")
+    assert partial_check.knowledge_id in labeled_ids
+    assert instruction_choices(context, None) == ()
+
+    plan = recommendation_schema(
+        [item.id for item in investigation.report.evidence], choices
+    ).model_validate(
+        {
+            "checks": [
+                {
+                    "instruction_index": 0,
+                    "reason": "Recorded metric collection is partial.",
+                    "evidence_ids": [],
+                }
+            ],
+            "limitations": [],
+        }
+    )
+    (check,) = render_recommendations(plan, choices).checks
+    assert check.action == HISTORICAL_CHECK_CONDITION + partial_check.text
+    assert check.knowledge_ids == (partial_check.knowledge_id,)
+    assert check.evidence_ids == ()
